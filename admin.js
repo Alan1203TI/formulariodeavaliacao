@@ -19,6 +19,17 @@ function dateValue(r){
   return 0;
 }
 
+function questionScores(r) {
+  const answers = Array.isArray(r.answers) ? r.answers : [];
+  if (!answers.length) return '<span class="muted">Sem respostas detalhadas</span>';
+  return `<div class="score-list">${answers.map(a => {
+    const label = `Q${a.row || ''}`;
+    const sec = a.section ? ` title="${esc(a.section)}${a.special ? ' - critério especial' : ''}"` : '';
+    const gear = a.special ? ' ⚙️' : '';
+    return `<span class="score-pill"${sec}>${esc(label)}: <b>${esc(a.score ?? '-')}</b>${gear}</span>`;
+  }).join('')}</div>`;
+}
+
 async function load() {
   const status = document.getElementById('status');
   if (!db) { status.textContent = 'Firebase não inicializado.'; return; }
@@ -55,9 +66,9 @@ function render() {
   const tb = document.querySelector('#table tbody');
   tb.innerHTML = '';
   const filtered = rows.filter(r => (!type || r.type === type) && (!team || `${r.teamNumber} ${r.teamName}`.toLowerCase().includes(team)));
-  if (!filtered.length) { tb.innerHTML = '<tr><td colspan="9">Nenhuma avaliação encontrada.</td></tr>'; return; }
+  if (!filtered.length) { tb.innerHTML = '<tr><td colspan="10">Nenhuma avaliação encontrada.</td></tr>'; return; }
   filtered.forEach(r => {
-    tb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.createdAtLocal)}</td><td>${esc(r.typeTitle || r.type)}</td><td><b>${esc(r.teamNumber)}</b> - ${esc(r.teamName)}</td><td>${esc(r.judge)}</td><td>${esc(r.room)}</td><td>${esc(r.total)}</td><td>${esc(r.awardTotal ?? '')}</td><td>${esc(r.avg)}</td><td>${esc(r.generalNotes)}</td></tr>`);
+    tb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.createdAtLocal)}</td><td>${esc(r.typeTitle || r.type)}</td><td><b>${esc(r.teamNumber)}</b> - ${esc(r.teamName)}</td><td>${esc(r.judge)}</td><td>${esc(r.room)}</td><td>${questionScores(r)}</td><td>${esc(r.total)}</td><td>${esc(r.awardTotal ?? '')}</td><td>${esc(r.avg)}</td><td>${esc(r.generalNotes)}</td></tr>`);
   });
 }
 
@@ -67,8 +78,16 @@ function csv() {
     const type = document.getElementById('filterType').value;
     return (!type || r.type === type) && (!team || `${r.teamNumber} ${r.teamName}`.toLowerCase().includes(team));
   });
-  let out = 'Data;Tipo;Equipe Numero;Equipe Nome;Juiz;Sala;Total;Total Premiacao;Media;Observacoes;Respostas\n';
-  visibleRows.forEach(r => { out += [r.createdAtLocal, r.typeTitle, r.teamNumber, r.teamName, r.judge, r.room, r.total, r.awardTotal ?? '', r.avg, r.generalNotes, (r.answers || []).map(a => `${a.section} linha ${a.row}: ${a.score}${a.special ? ' ⚙️' : ''}${a.comment ? ' - ' + a.comment : ''}`).join(' | ')].map(v => `"${String(v ?? '').replaceAll('"','""')}"`).join(';') + '\n'; });
+  let out = 'Data;Tipo;Equipe Numero;Equipe Nome;Juiz;Sala;Q1;Q2;Q3;Q4;Q5;Q6;Q7;Q8;Q9;Q10;Total;Total Premiacao;Media;Observacoes;Respostas Detalhadas\n';
+  visibleRows.forEach(r => {
+    const answers = Array.isArray(r.answers) ? r.answers : [];
+    const qScores = Array.from({ length: 10 }, (_, i) => {
+      const found = answers.find(a => Number(a.row) === i + 1);
+      return found ? `${found.score ?? ''}${found.special ? ' ⚙️' : ''}` : '';
+    });
+    const detailed = answers.map(a => `${a.section} linha ${a.row}: ${a.score}${a.special ? ' ⚙️' : ''}${a.comment ? ' - ' + a.comment : ''}`).join(' | ');
+    out += [r.createdAtLocal, r.typeTitle, r.teamNumber, r.teamName, r.judge, r.room, ...qScores, r.total, r.awardTotal ?? '', r.avg, r.generalNotes, detailed].map(v => `"${String(v ?? '').replaceAll('"','""')}"`).join(';') + '\n';
+  });
   const blob = new Blob(['\ufeff' + out], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
