@@ -1,0 +1,23 @@
+REGRAS DO FIRESTORE PARA ESTE SISTEMA FLL
+
+Cole estas regras no Firebase Console:
+Firebase > Firestore Database > Regras > Publicar
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /avaliacoes_fll/{doc} {
+      allow read, write: if true;
+    }
+
+    match /usuarios_fll/{doc} {
+      allow read, write: if true;
+    }
+  }
+}
+
+IMPORTANTE:
+- Estas regras são para o modelo atual do sistema, que usa login próprio por usuário/senha salvos no Firestore.
+- Não coloque regra com data de expiração. Se tiver request.time < timestamp.date(...), depois dessa data o sistema para de ler/salvar.
+- Se quiser uma versão mais segura depois, o ideal é migrar para Firebase Authentication.

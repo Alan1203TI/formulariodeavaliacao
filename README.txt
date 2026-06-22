@@ -1,59 +1,46 @@
-PROGRAMA FLL - AVALIAÇÃO ONLINE
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import { getFirestore, collection, getDocs, query, where, limit } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { firebaseConfig } from './firebase-config.js';
+import { defaultAdmin } from './data.js';
 
-VERSÃO CORRIGIDA
-- Firebase configurado no arquivo firebase-config.js.
-- Botão Sair corrigido em todas as páginas.
-- Tela principal sem exibir senhas/instruções de acesso.
-- Admin padrão: usuário admin / senha FLL@2026MG.
-- Painel administrativo com criação de usuários para juízes.
-- Página de avaliação corrigida com as rubricas completas de Projeto de Inovação e Design do Robô.
-- Critérios especiais com engrenagem identificados visualmente e salvos no banco.
-- Cálculo de Total da Rubrica e Total de Premiação, com critérios ⚙️ dobrados.
+const form = document.getElementById('loginForm');
+const msg = document.getElementById('msg');
+let db = null;
+try { db = getFirestore(initializeApp(firebaseConfig)); } catch (e) { console.warn('Firebase não inicializado', e); }
 
-ARQUIVOS
-- index.html: login.
-- avaliacao.html: formulário do juiz.
-- admin.html: painel administrativo.
-- login.js: login do admin e dos juízes.
-- avaliacao.js: montagem e envio dos formulários.
-- admin.js: painel, exportação CSV e criação de juízes.
-- data.js: rubricas e admin padrão.
-- firebase-config.js: configuração Firebase.
-- style.css: visual estilo pontuação da robótica.
-
-ACESSO ADMIN
-Usuário: admin
-Senha: FLL@2026MG
-
-COMO CRIAR JUÍZES
-1. Entre como admin.
-2. Vá na área "Criar usuário para juiz".
-3. Informe nome, usuário e senha.
-4. O juiz entra pelo mesmo index.html usando o usuário e senha criados.
-
-COLEÇÕES FIRESTORE USADAS
-- avaliacoes_fll
-- usuarios_fll
-
-REGRAS TEMPORÁRIAS PARA TESTE
-Use estas regras apenas durante testes ou evento interno:
-
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /avaliacoes_fll/{doc} {
-      allow read, write: if true;
-    }
-    match /usuarios_fll/{doc} {
-      allow read, write: if true;
-    }
-  }
+function enter(user) {
+  const data = JSON.stringify(user);
+  sessionStorage.setItem('fllUser', data);
+  localStorage.setItem('fllUser', data);
+  location.href = user.role === 'admin' ? 'admin.html' : 'avaliacao.html';
 }
 
-OBSERVAÇÃO IMPORTANTE
-Este login usa usuário e senha salvos no Firestore para facilitar o evento.
-Para uma versão mais segura, o ideal é usar Firebase Authentication.
+async function findFirebaseUser(username, password) {
+  if (!db) return null;
+  const q = query(collection(db, 'usuarios_fll'), where('user', '==', username), where('active', '==', true), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const data = snap.docs[0].data();
+  if (String(data.password) !== password) return null;
+  return { user: data.user, name: data.name || data.user, role: data.role || 'judge' };
+}
 
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  msg.textContent = 'Entrando...';
+  const u = document.getElementById('user').value.trim();
+  const p = document.getElementById('password').value.trim();
 
-CORREÇÃO DE ERRO AO CARREGAR AVALIAÇÕES
-Se aparecer erro no painel admin, cole as regras do arquivo FIREBASE-REGRAS.txt no Firestore. Também removi a ordenação direta por createdAt para evitar erro de consulta/index no Firebase. A ordenação agora é feita dentro do próprio programa.
+  if (u === defaultAdmin.user && p === defaultAdmin.password) return enter(defaultAdmin);
+
+  try {
+    const fbUser = await findFirebaseUser(u, p);
+    if (fbUser) return enter(fbUser);
+  } catch (err) {
+    console.warn('Não foi possível consultar usuários no Firestore', err);
+    msg.textContent = 'Erro ao consultar usuários. Confira as regras do Firestore.';
+    return;
+  }
+
+  msg.textContent = 'Usuário ou senha inválidos.';
+});
