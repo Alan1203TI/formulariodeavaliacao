@@ -15,5 +15,5 @@ Cole as regras do arquivo FIREBASE-REGRAS.txt em:
 Firebase Console > Firestore Database > Regras > Publicar
 
 COLEÇÕES USADAS
-- usuarios_fll
-- avaliacoes_fll
+- usuarios
+- avaliacoes

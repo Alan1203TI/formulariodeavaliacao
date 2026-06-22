@@ -1,0 +1,16 @@
+ALTERAÇÕES REALIZADAS
+
+1. firebase-config.js corrigido para o padrão modular do Firebase.
+2. login.js, admin.js e avaliacao.js agora importam o db diretamente de firebase-config.js.
+3. Removido o uso antigo de firebase.initializeApp() e firebase.firestore(), que não funciona com type="module".
+4. Coleções ajustadas para bater com as regras informadas:
+   - usuarios
+   - avaliacoes
+   - equipes
+   - salas
+5. FIREBASE-REGRAS.txt atualizado com regra fixa, sem expiração.
+
+Depois de subir no GitHub Pages:
+- Publique as regras do arquivo FIREBASE-REGRAS.txt no Firestore.
+- Atualize o site com Ctrl + F5.
+- Entre com admin / FLL@2026MG.

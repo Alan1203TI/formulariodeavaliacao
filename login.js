@@ -1,12 +1,9 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import { firebaseConfig } from './firebase-config.js';
+import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { db } from './firebase-config.js';
 import { defaultAdmin } from './data.js';
 
 const form = document.getElementById('loginForm');
 const msg = document.getElementById('msg');
-let db = null;
-try { db = getFirestore(initializeApp(firebaseConfig)); } catch (e) { console.warn('Firebase não inicializado', e); }
 
 function enter(user) {
   const data = JSON.stringify(user);
@@ -17,7 +14,7 @@ function enter(user) {
 
 async function findFirebaseUser(username, password) {
   if (!db) return null;
-  const snap = await getDocs(collection(db, 'usuarios_fll'));
+  const snap = await getDocs(collection(db, 'usuarios'));
   for (const doc of snap.docs) {
     const data = doc.data();
     if (String(data.user || '').trim() === username && String(data.password || '').trim() === password && data.active !== false) {

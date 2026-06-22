@@ -1,6 +1,5 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import { firebaseConfig } from './firebase-config.js';
+import { collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { db } from './firebase-config.js';
 import { rubrics } from './data.js';
 
 const storedUser = sessionStorage.getItem('fllUser') || localStorage.getItem('fllUser') || 'null';
@@ -11,8 +10,6 @@ function sair(){ sessionStorage.removeItem('fllUser'); localStorage.removeItem('
 document.getElementById('judgeName').textContent = user ? ' | ' + user.name : '';
 document.getElementById('logout').addEventListener('click', sair);
 
-let db = null;
-try { db = getFirestore(initializeApp(firebaseConfig)); } catch (e) { console.warn('Firebase não inicializado', e); }
 
 const type = document.getElementById('type');
 const rubricEl = document.getElementById('rubric');
@@ -92,7 +89,7 @@ document.getElementById('evalForm').addEventListener('submit', async (e) => {
 
   try {
     if (!db) throw new Error('Firebase não inicializado');
-    await addDoc(collection(db, 'avaliacoes_fll'), payload);
+    await addDoc(collection(db, 'avaliacoes'), payload);
     msg.textContent = 'Avaliação enviada com sucesso!';
     e.target.reset();
     renderRubric();

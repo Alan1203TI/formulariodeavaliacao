@@ -4,18 +4,33 @@ Cole SOMENTE o bloco abaixo no Firebase Console:
 Firebase > Firestore Database > Regras > Publicar
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /avaliacoes_fll/{doc} {
-      allow read, write: if true;
+
+    match /usuarios/{userId} {
+      allow read: if true;
+      allow write: if true;
     }
-    match /usuarios_fll/{doc} {
-      allow read, write: if true;
+
+    match /avaliacoes/{doc} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /equipes/{doc} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /salas/{doc} {
+      allow read: if true;
+      allow write: if true;
     }
   }
 }
 
 IMPORTANTE:
-- Não coloque este texto dentro do GitHub como página principal.
-- O arquivo principal do site precisa ser o index.html.
-- Não use regra com request.time < timestamp.date(...), pois ela expira e bloqueia leitura/salvamento.
+- Esta regra não possui data de expiração.
+- As coleções usadas pelo código são: usuarios, avaliacoes, equipes e salas.
+- Não publique este arquivo no lugar do index.html no GitHub Pages.

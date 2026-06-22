@@ -1,6 +1,5 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getFirestore, collection, getDocs, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import { firebaseConfig } from './firebase-config.js';
+import { collection, getDocs, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { db } from './firebase-config.js';
 
 const user = JSON.parse(sessionStorage.getItem('fllUser') || localStorage.getItem('fllUser') || 'null');
 if (!user || user.role !== 'admin') location.replace('index.html');
@@ -10,8 +9,6 @@ document.getElementById('logout').addEventListener('click', () => {
   location.replace('index.html');
 });
 
-let db = null;
-try { db = getFirestore(initializeApp(firebaseConfig)); } catch (e) { console.error(e); }
 let rows = [];
 let judges = [];
 
@@ -27,7 +24,7 @@ async function load() {
   if (!db) { status.textContent = 'Firebase não inicializado.'; return; }
   status.textContent = 'Carregando avaliações...';
   try {
-    const snap = await getDocs(collection(db, 'avaliacoes_fll'));
+    const snap = await getDocs(collection(db, 'avaliacoes'));
     rows = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => dateValue(b) - dateValue(a));
     render();
     status.textContent = `${rows.length} avaliação(ões) encontrada(s).`;
@@ -42,7 +39,7 @@ async function loadJudges() {
   tbody.innerHTML = '<tr><td colspan="4">Carregando usuários...</td></tr>';
   if (!db) return;
   try {
-    const snap = await getDocs(collection(db, 'usuarios_fll'));
+    const snap = await getDocs(collection(db, 'usuarios'));
     judges = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
     tbody.innerHTML = judges.length ? '' : '<tr><td colspan="4">Nenhum juiz criado ainda.</td></tr>';
     judges.forEach(j => tbody.insertAdjacentHTML('beforeend', `<tr><td>${esc(j.name)}</td><td>${esc(j.user)}</td><td>${esc(j.role)}</td><td>${j.active === false ? 'Inativo' : 'Ativo'}</td></tr>`));
@@ -89,10 +86,10 @@ async function createJudge(e) {
   if (!name || !userName || !password) { msg.textContent = 'Preencha nome, usuário e senha.'; return; }
   if (!db) { msg.textContent = 'Firebase não inicializado.'; return; }
   try {
-    const snap = await getDocs(collection(db, 'usuarios_fll'));
+    const snap = await getDocs(collection(db, 'usuarios'));
     const exists = snap.docs.some(d => String(d.data().user || '').trim() === userName);
     if (exists) { msg.textContent = 'Já existe um usuário com esse login.'; return; }
-    await addDoc(collection(db, 'usuarios_fll'), { name, user: userName, password, role: 'judge', active: true, createdAt: serverTimestamp(), createdAtLocal: new Date().toLocaleString('pt-BR') });
+    await addDoc(collection(db, 'usuarios'), { name, user: userName, password, role: 'judge', active: true, createdAt: serverTimestamp(), createdAtLocal: new Date().toLocaleString('pt-BR') });
     msg.textContent = 'Juiz criado com sucesso!';
     e.target.reset();
     loadJudges();
