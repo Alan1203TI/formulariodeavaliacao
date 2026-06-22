@@ -1,7 +1,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getFirestore, collection, getDocs, query, where, limit } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
-import { defaultAdmin, fallbackJudges } from './data.js';
+import { defaultAdmin } from './data.js';
 
 const form = document.getElementById('loginForm');
 const msg = document.getElementById('msg');
@@ -9,7 +9,9 @@ let db = null;
 try { db = getFirestore(initializeApp(firebaseConfig)); } catch (e) { console.warn('Firebase não inicializado', e); }
 
 function enter(user) {
-  sessionStorage.setItem('fllUser', JSON.stringify(user));
+  const data = JSON.stringify(user);
+  sessionStorage.setItem('fllUser', data);
+  localStorage.setItem('fllUser', data);
   location.href = user.role === 'admin' ? 'admin.html' : 'avaliacao.html';
 }
 
@@ -36,10 +38,9 @@ form.addEventListener('submit', async (e) => {
     if (fbUser) return enter(fbUser);
   } catch (err) {
     console.warn('Não foi possível consultar usuários no Firestore', err);
+    msg.textContent = 'Erro ao consultar usuários. Confira as regras do Firestore.';
+    return;
   }
-
-  const localJudge = fallbackJudges.find(j => j.user === u && j.password === p);
-  if (localJudge) return enter(localJudge);
 
   msg.textContent = 'Usuário ou senha inválidos.';
 });

@@ -7,6 +7,8 @@ VERSÃO CORRIGIDA
 - Admin padrão: usuário admin / senha FLL@2026MG.
 - Painel administrativo com criação de usuários para juízes.
 - Página de avaliação corrigida com as rubricas completas de Projeto de Inovação e Design do Robô.
+- Critérios especiais com engrenagem identificados visualmente e salvos no banco.
+- Cálculo de Total da Rubrica e Total de Premiação, com critérios ⚙️ dobrados.
 
 ARQUIVOS
 - index.html: login.

@@ -3,11 +3,13 @@ import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.g
 import { firebaseConfig } from './firebase-config.js';
 import { rubrics } from './data.js';
 
-const user = JSON.parse(sessionStorage.getItem('fllUser') || 'null');
+const storedUser = sessionStorage.getItem('fllUser') || localStorage.getItem('fllUser') || 'null';
+const user = JSON.parse(storedUser);
 if (!user || user.role !== 'judge') location.href = 'index.html';
 
+function sair(){ sessionStorage.removeItem('fllUser'); localStorage.removeItem('fllUser'); location.replace('index.html'); }
 document.getElementById('judgeName').textContent = user ? ' | ' + user.name : '';
-document.getElementById('logout').addEventListener('click', () => { sessionStorage.removeItem('fllUser'); location.replace('index.html'); });
+document.getElementById('logout').addEventListener('click', sair);
 
 let db = null;
 try { db = getFirestore(initializeApp(firebaseConfig)); } catch (e) { console.warn('Firebase não inicializado', e); }
@@ -20,17 +22,19 @@ function esc(v){ return String(v ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<
 function renderRubric() {
   const r = rubrics[type.value];
   if (!r) { rubricEl.innerHTML = '<section class="panel"><p class="msg">Rubrica não encontrada.</p></section>'; return; }
-  let html = `<section class="panel ${r.color}"><h2>${esc(r.title)}</h2><p>Marque uma opção de 1 a 4 em cada linha. Se marcar <b>4 - Excelente</b>, o comentário da linha será obrigatório.</p></section>`;
+  let html = `<section class="panel ${r.color}"><h2>${esc(r.title)}</h2><p>Marque uma opção de <b>1 a 4</b> em cada linha: Fase Inicial, Em Desenvolvimento, Finalizado ou Excelente. As linhas com <b>⚙️</b> são os critérios especiais do PDF e entram também na pontuação dobrada de premiações.</p></section>`;
   let idx = 0;
   r.items.forEach(item => {
     html += `<section class="panel rubric"><h3>${esc(item.section)}</h3><p>${esc(item.description)}</p>`;
-    item.rows.forEach(row => {
+    item.rows.forEach(rowObj => {
       idx++;
-      html += `<div class="row" data-row="${idx}" data-section="${esc(item.section)}"><div class="criteria">`;
-      row.forEach((text, i) => {
+      const texts = Array.isArray(rowObj) ? rowObj : rowObj.texts;
+      const special = !!rowObj.special;
+      html += `<div class="row" data-row="${idx}" data-section="${esc(item.section)}" data-special="${special}"><div class="row-title">${special ? '<span class="gear">⚙️ Critério especial</span>' : '<span>Critério normal</span>'}</div><div class="criteria">`;
+      texts.forEach((text, i) => {
         const score = i + 1;
-        const label = score === 4 ? 'Excelente' : esc(text);
-        html += `<label><input type="radio" name="score_${idx}" value="${score}" required><b>${score}</b> ${label}<small>${score === 4 ? esc(text) : ''}</small></label>`;
+        const level = ['Fase Inicial','Em Desenvolvimento','Finalizado','Excelente'][i];
+        html += `<label><input type="radio" name="score_${idx}" value="${score}" required><b>${score}</b> ${level}<small>${esc(text)}</small></label>`;
       });
       html += `</div><textarea name="comment_${idx}" placeholder="Comentário da linha. Obrigatório se marcar 4 - Excelente."></textarea></div>`;
     });
@@ -57,13 +61,16 @@ document.getElementById('evalForm').addEventListener('submit', async (e) => {
     const n = row.dataset.row;
     const checked = row.querySelector(`input[name="score_${n}"]:checked`);
     const comment = row.querySelector(`textarea[name="comment_${n}"]`).value.trim();
+    const special = row.dataset.special === 'true';
     if (!checked || (checked.value === '4' && !comment)) { valid = false; row.classList.add('error'); }
     else row.classList.remove('error');
-    answers.push({ row: Number(n), section: row.dataset.section, score: checked ? Number(checked.value) : null, comment });
+    answers.push({ row: Number(n), section: row.dataset.section, special, score: checked ? Number(checked.value) : null, comment });
   });
   if (!valid) { msg.textContent = 'Confira as linhas em vermelho. Todas precisam de nota e as notas 4 precisam de comentário.'; return; }
 
   const total = answers.reduce((s, a) => s + (a.score || 0), 0);
+  const awardTotal = answers.reduce((s, a) => s + ((a.score || 0) * (a.special ? 2 : 1)), 0);
+  const specialTotal = answers.filter(a => a.special).reduce((s, a) => s + (a.score || 0), 0);
   const avg = (total / answers.length).toFixed(2);
   const payload = {
     type: type.value,
@@ -75,6 +82,8 @@ document.getElementById('evalForm').addEventListener('submit', async (e) => {
     judgeUser: user.user,
     answers,
     total,
+    specialTotal,
+    awardTotal,
     avg,
     generalNotes: document.getElementById('generalNotes').value.trim(),
     createdAt: serverTimestamp(),

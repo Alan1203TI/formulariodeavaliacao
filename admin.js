@@ -2,9 +2,9 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { getFirestore, collection, getDocs, query, orderBy, addDoc, serverTimestamp, where, limit } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
-const user = JSON.parse(sessionStorage.getItem('fllUser') || 'null');
+const user = JSON.parse(sessionStorage.getItem('fllUser') || localStorage.getItem('fllUser') || 'null');
 if (!user || user.role !== 'admin') location.href = 'index.html';
-document.getElementById('logout').addEventListener('click', () => { sessionStorage.removeItem('fllUser'); location.replace('index.html'); });
+document.getElementById('logout').addEventListener('click', () => { sessionStorage.removeItem('fllUser'); localStorage.removeItem('fllUser'); location.replace('index.html'); });
 
 let db = null;
 try { db = getFirestore(initializeApp(firebaseConfig)); } catch (e) { console.error(e); }
@@ -18,7 +18,7 @@ async function load() {
   if (!db) { status.textContent = 'Firebase não inicializado.'; return; }
   status.textContent = 'Carregando...';
   try {
-    const snap = await getDocs(query(collection(db, 'avaliacoes_fll'), orderBy('createdAtLocal', 'desc')));
+    const snap = await getDocs(query(collection(db, 'avaliacoes_fll'), orderBy('createdAt', 'desc')));
     rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     render();
     status.textContent = `${rows.length} avaliação(ões) encontrada(s).`;
@@ -49,9 +49,9 @@ function render() {
   const tb = document.querySelector('#table tbody');
   tb.innerHTML = '';
   const filtered = rows.filter(r => (!type || r.type === type) && (!team || `${r.teamNumber} ${r.teamName}`.toLowerCase().includes(team)));
-  if (!filtered.length) { tb.innerHTML = '<tr><td colspan="8">Nenhuma avaliação encontrada.</td></tr>'; return; }
+  if (!filtered.length) { tb.innerHTML = '<tr><td colspan="9">Nenhuma avaliação encontrada.</td></tr>'; return; }
   filtered.forEach(r => {
-    tb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.createdAtLocal)}</td><td>${esc(r.typeTitle || r.type)}</td><td><b>${esc(r.teamNumber)}</b> - ${esc(r.teamName)}</td><td>${esc(r.judge)}</td><td>${esc(r.room)}</td><td>${esc(r.total)}</td><td>${esc(r.avg)}</td><td>${esc(r.generalNotes)}</td></tr>`);
+    tb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.createdAtLocal)}</td><td>${esc(r.typeTitle || r.type)}</td><td><b>${esc(r.teamNumber)}</b> - ${esc(r.teamName)}</td><td>${esc(r.judge)}</td><td>${esc(r.room)}</td><td>${esc(r.total)}</td><td>${esc(r.awardTotal ?? '')}</td><td>${esc(r.avg)}</td><td>${esc(r.generalNotes)}</td></tr>`);
   });
 }
 
@@ -61,8 +61,8 @@ function csv() {
     const type = document.getElementById('filterType').value;
     return (!type || r.type === type) && (!team || `${r.teamNumber} ${r.teamName}`.toLowerCase().includes(team));
   });
-  let out = 'Data;Tipo;Equipe Numero;Equipe Nome;Juiz;Sala;Total;Media;Observacoes\n';
-  visibleRows.forEach(r => { out += [r.createdAtLocal, r.typeTitle, r.teamNumber, r.teamName, r.judge, r.room, r.total, r.avg, r.generalNotes].map(v => `"${String(v ?? '').replaceAll('"','""')}"`).join(';') + '\n'; });
+  let out = 'Data;Tipo;Equipe Numero;Equipe Nome;Juiz;Sala;Total;Total Premiacao;Media;Observacoes;Respostas\n';
+  visibleRows.forEach(r => { out += [r.createdAtLocal, r.typeTitle, r.teamNumber, r.teamName, r.judge, r.room, r.total, r.awardTotal ?? '', r.avg, r.generalNotes, (r.answers || []).map(a => `${a.section} linha ${a.row}: ${a.score}${a.special ? ' ⚙️' : ''}${a.comment ? ' - ' + a.comment : ''}`).join(' | ')].map(v => `"${String(v ?? '').replaceAll('"','""')}"`).join(';') + '\n'; });
   const blob = new Blob(['\ufeff' + out], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
