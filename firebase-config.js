@@ -1,4 +1,6 @@
-export const firebaseConfig = {
+// firebase-config.js
+
+const firebaseConfig = {
   apiKey: "AIzaSyDErBE9cC4ec7b2DR5b3iwq1bYtuOOgNGs",
   authDomain: "formulario-de-avaliacao.firebaseapp.com",
   projectId: "formulario-de-avaliacao",
@@ -6,3 +8,7 @@ export const firebaseConfig = {
   messagingSenderId: "201340679544",
   appId: "1:201340679544:web:777cd8809fafc27210848d"
 };
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.firestore();
