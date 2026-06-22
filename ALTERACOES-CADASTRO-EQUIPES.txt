@@ -1,0 +1,15 @@
+ALTERAÇÕES - CADASTRO DE EQUIPES
+
+1. Painel Admin
+- Adicionada seção "Cadastrar equipes".
+- Campos: número da equipe, nome da equipe e sala padrão.
+- Equipes são salvas na coleção Firestore: equipes.
+- A tabela do admin lista as equipes cadastradas.
+
+2. Página de Avaliação
+- O juiz não precisa mais digitar equipe toda hora.
+- Agora ele seleciona a equipe em uma lista suspensa carregada do cadastro do Admin.
+- Ao selecionar, o sistema preenche automaticamente número, nome e sala padrão.
+
+3. Regras do Firebase
+- A coleção equipes já está contemplada no FIREBASE-REGRAS.txt.

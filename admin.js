@@ -1,4 +1,4 @@
-import { collection, getDocs, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { collection, getDocs, addDoc, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { db } from './firebase-config.js';
 import { rubrics } from './data.js';
 
@@ -12,6 +12,7 @@ document.getElementById('logout').addEventListener('click', () => {
 
 let rows = [];
 let judges = [];
+let teams = [];
 
 function esc(v){ return String(v ?? '').replace(/[&<>\"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m])); }
 function dateValue(r){
@@ -133,6 +134,45 @@ async function loadJudges() {
   }
 }
 
+
+async function loadTeams() {
+  const tbody = document.querySelector('#teamsTable tbody');
+  tbody.innerHTML = '<tr><td colspan="4">Carregando equipes...</td></tr>';
+  if (!db) return;
+  try {
+    const snap = await getDocs(collection(db, 'equipes'));
+    teams = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>String(a.number||'').localeCompare(String(b.number||''), 'pt-BR', {numeric:true}));
+    tbody.innerHTML = teams.length ? '' : '<tr><td colspan="4">Nenhuma equipe cadastrada ainda.</td></tr>';
+    teams.forEach(t => tbody.insertAdjacentHTML('beforeend', `<tr><td><b>${esc(t.number)}</b></td><td>${esc(t.name)}</td><td>${esc(t.room || '')}</td><td>${t.active === false ? 'Inativa' : 'Ativa'}</td></tr>`));
+  } catch (e) {
+    console.error(e);
+    tbody.innerHTML = '<tr><td colspan="4">Erro ao carregar equipes. Confira as regras do Firestore.</td></tr>';
+  }
+}
+
+async function createTeam(e) {
+  e.preventDefault();
+  const msg = document.getElementById('teamMsg');
+  msg.textContent = 'Salvando equipe...';
+  const number = document.getElementById('teamNumberInput').value.trim();
+  const name = document.getElementById('teamNameInput').value.trim();
+  const room = document.getElementById('teamRoomInput').value.trim();
+  if (!number || !name) { msg.textContent = 'Preencha número e nome da equipe.'; return; }
+  if (!db) { msg.textContent = 'Firebase não inicializado.'; return; }
+  try {
+    const snap = await getDocs(collection(db, 'equipes'));
+    const exists = snap.docs.some(d => String(d.data().number || '').trim().toLowerCase() === number.toLowerCase());
+    if (exists) { msg.textContent = 'Já existe uma equipe cadastrada com esse número.'; return; }
+    await addDoc(collection(db, 'equipes'), { number, name, room, active: true, createdAt: serverTimestamp(), createdAtLocal: new Date().toLocaleString('pt-BR') });
+    msg.textContent = 'Equipe cadastrada com sucesso!';
+    e.target.reset();
+    loadTeams();
+  } catch (err) {
+    console.error(err);
+    msg.textContent = 'Erro ao salvar equipe. Confira as regras do Firestore.';
+  }
+}
+
 function render() {
   const team = document.getElementById('filterTeam').value.toLowerCase();
   const type = document.getElementById('filterType').value;
@@ -200,7 +240,9 @@ document.getElementById('exportCsv').addEventListener('click', csv);
 document.getElementById('filterTeam').addEventListener('input', render);
 document.getElementById('filterType').addEventListener('change', render);
 document.getElementById('judgeForm').addEventListener('submit', createJudge);
+document.getElementById('teamForm').addEventListener('submit', createTeam);
 document.getElementById('closeModal').addEventListener('click', () => document.getElementById('detailModal').classList.add('hidden'));
 document.getElementById('detailModal').addEventListener('click', (e) => { if (e.target.id === 'detailModal') e.currentTarget.classList.add('hidden'); });
 load();
 loadJudges();
+loadTeams();

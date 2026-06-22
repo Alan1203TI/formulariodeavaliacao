@@ -1,4 +1,4 @@
-import { collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { collection, addDoc, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { db } from './firebase-config.js';
 import { rubrics } from './data.js';
 
@@ -13,8 +13,37 @@ document.getElementById('logout').addEventListener('click', sair);
 
 const type = document.getElementById('type');
 const rubricEl = document.getElementById('rubric');
+const teamSelect = document.getElementById('teamSelect');
+let teams = [];
 
 function esc(v){ return String(v ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+
+async function loadTeams() {
+  teamSelect.innerHTML = '<option value="">Carregando equipes...</option>';
+  try {
+    const snap = await getDocs(collection(db, 'equipes'));
+    teams = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(t => t.active !== false)
+      .sort((a,b)=>String(a.number||'').localeCompare(String(b.number||''), 'pt-BR', {numeric:true}));
+    if (!teams.length) {
+      teamSelect.innerHTML = '<option value="">Nenhuma equipe cadastrada no painel admin</option>';
+      return;
+    }
+    teamSelect.innerHTML = '<option value="">Selecione a equipe</option>' + teams.map(t => `<option value="${esc(t.id)}">${esc(t.number)} - ${esc(t.name)}</option>`).join('');
+  } catch (e) {
+    console.error(e);
+    teamSelect.innerHTML = '<option value="">Erro ao carregar equipes</option>';
+  }
+}
+
+teamSelect.addEventListener('change', () => {
+  const selected = teams.find(t => t.id === teamSelect.value);
+  document.getElementById('teamNumber').value = selected ? (selected.number || '') : '';
+  document.getElementById('teamName').value = selected ? (selected.name || '') : '';
+  const roomInput = document.getElementById('room');
+  if (selected && selected.room && !roomInput.value.trim()) roomInput.value = selected.room;
+});
 
 function renderRubric() {
   const r = rubrics[type.value];
@@ -42,6 +71,7 @@ function renderRubric() {
 
 type.addEventListener('change', renderRubric);
 renderRubric();
+loadTeams();
 
 document.getElementById('evalForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -92,7 +122,10 @@ document.getElementById('evalForm').addEventListener('submit', async (e) => {
     await addDoc(collection(db, 'avaliacoes'), payload);
     msg.textContent = 'Avaliação enviada com sucesso!';
     e.target.reset();
+    document.getElementById('teamNumber').value = '';
+    document.getElementById('teamName').value = '';
     renderRubric();
+    loadTeams();
     window.scrollTo(0, 0);
   } catch (err) {
     console.error(err);
