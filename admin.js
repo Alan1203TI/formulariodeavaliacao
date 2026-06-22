@@ -1,5 +1,6 @@
 import { collection, getDocs, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { db } from './firebase-config.js';
+import { rubrics } from './data.js';
 
 const user = JSON.parse(sessionStorage.getItem('fllUser') || localStorage.getItem('fllUser') || 'null');
 if (!user || user.role !== 'admin') location.replace('index.html');
@@ -19,16 +20,88 @@ function dateValue(r){
   return 0;
 }
 
+function getAnswers(r) {
+  return Array.isArray(r.answers) ? r.answers : [];
+}
+
+function calcTotal(r) {
+  const answers = getAnswers(r);
+  if (!answers.length && r.total != null) return Number(r.total) || 0;
+  return answers.reduce((s, a) => s + (Number(a.score) || 0), 0);
+}
+
+function calcAwardTotal(r) {
+  const answers = getAnswers(r);
+  if (!answers.length && r.awardTotal != null) return Number(r.awardTotal) || 0;
+  // Regra correta: questão normal conta 1x; questão com ⚙️ conta 2x.
+  return answers.reduce((s, a) => s + ((Number(a.score) || 0) * (a.special ? 2 : 1)), 0);
+}
+
+function calcSpecialBonus(r) {
+  return getAnswers(r).filter(a => a.special).reduce((s, a) => s + (Number(a.score) || 0), 0);
+}
+
 function questionScores(r) {
-  const answers = Array.isArray(r.answers) ? r.answers : [];
+  const answers = getAnswers(r);
   if (!answers.length) return '<span class="muted">Sem respostas detalhadas</span>';
   return `<div class="score-list">${answers.map(a => {
     const label = `Q${a.row || ''}`;
-    const sec = a.section ? ` title="${esc(a.section)}${a.special ? ' - critério especial' : ''}"` : '';
+    const sec = a.section ? ` title="${esc(a.section)}${a.special ? ' - critério especial, conta em dobro na premiação' : ''}"` : '';
     const gear = a.special ? ' ⚙️' : '';
-    return `<span class="score-pill"${sec}>${esc(label)}: <b>${esc(a.score ?? '-')}</b>${gear}</span>`;
+    return `<span class="score-pill ${a.special ? 'special' : ''}"${sec}>${esc(label)}: <b>${esc(a.score ?? '-')}</b>${gear}</span>`;
   }).join('')}</div>`;
 }
+
+function rubricText(r, a) {
+  const rubric = rubrics[r.type];
+  if (!rubric) return '';
+  let n = 0;
+  for (const item of rubric.items) {
+    for (const row of item.rows) {
+      n++;
+      if (n === Number(a.row)) {
+        const idx = Math.max(0, Math.min(3, Number(a.score || 1) - 1));
+        const texts = Array.isArray(row) ? row : row.texts;
+        return texts[idx] || '';
+      }
+    }
+  }
+  return '';
+}
+
+function openDetails(index) {
+  const r = rows[index];
+  if (!r) return;
+  const answers = getAnswers(r);
+  const total = calcTotal(r);
+  const bonus = calcSpecialBonus(r);
+  const award = calcAwardTotal(r);
+  const html = `
+    <h2>Rubrica completa</h2>
+    <p><b>${esc(r.typeTitle || r.type)}</b> — Equipe <b>${esc(r.teamNumber)} - ${esc(r.teamName)}</b></p>
+    <p>Juiz: <b>${esc(r.judge)}</b> | Sala: <b>${esc(r.room)}</b> | Data: ${esc(r.createdAtLocal)}</p>
+    <div class="calc-box">
+      <b>Total:</b> ${total} &nbsp; | &nbsp;
+      <b>Bônus ⚙️:</b> ${bonus} &nbsp; | &nbsp;
+      <b>Total Premiação:</b> ${award}
+      <small>Total Premiação = Total + soma novamente das questões ⚙️.</small>
+    </div>
+    <div class="detail-list">
+      ${answers.map(a => `
+        <div class="detail-item ${a.special ? 'special' : ''}">
+          <div><b>Q${esc(a.row)}</b> — ${esc(a.section)} ${a.special ? '<span class="gear">⚙️ Critério especial</span>' : '<span class="muted">Critério normal</span>'}</div>
+          <div>Nota: <b>${esc(a.score)}</b>${a.special ? ` | Pontos para premiação: <b>${(Number(a.score)||0)*2}</b>` : ` | Pontos para premiação: <b>${esc(a.score)}</b>`}</div>
+          <small>${esc(rubricText(r, a))}</small>
+          ${a.comment ? `<p><b>Comentário:</b> ${esc(a.comment)}</p>` : ''}
+        </div>
+      `).join('')}
+    </div>
+    ${r.generalNotes ? `<p><b>Observações gerais:</b> ${esc(r.generalNotes)}</p>` : ''}
+  `;
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('detailModal').classList.remove('hidden');
+}
+window.openDetails = openDetails;
 
 async function load() {
   const status = document.getElementById('status');
@@ -66,9 +139,13 @@ function render() {
   const tb = document.querySelector('#table tbody');
   tb.innerHTML = '';
   const filtered = rows.filter(r => (!type || r.type === type) && (!team || `${r.teamNumber} ${r.teamName}`.toLowerCase().includes(team)));
-  if (!filtered.length) { tb.innerHTML = '<tr><td colspan="10">Nenhuma avaliação encontrada.</td></tr>'; return; }
+  if (!filtered.length) { tb.innerHTML = '<tr><td colspan="11">Nenhuma avaliação encontrada.</td></tr>'; return; }
   filtered.forEach(r => {
-    tb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.createdAtLocal)}</td><td>${esc(r.typeTitle || r.type)}</td><td><b>${esc(r.teamNumber)}</b> - ${esc(r.teamName)}</td><td>${esc(r.judge)}</td><td>${esc(r.room)}</td><td>${questionScores(r)}</td><td>${esc(r.total)}</td><td>${esc(r.awardTotal ?? '')}</td><td>${esc(r.avg)}</td><td>${esc(r.generalNotes)}</td></tr>`);
+    const originalIndex = rows.indexOf(r);
+    const total = calcTotal(r);
+    const award = calcAwardTotal(r);
+    const avg = getAnswers(r).length ? (total / getAnswers(r).length).toFixed(2) : (r.avg || '');
+    tb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.createdAtLocal)}</td><td>${esc(r.typeTitle || r.type)}</td><td><b>${esc(r.teamNumber)}</b> - ${esc(r.teamName)}</td><td>${esc(r.judge)}</td><td>${esc(r.room)}</td><td>${questionScores(r)}</td><td>${esc(total)}</td><td><b>${esc(award)}</b></td><td>${esc(avg)}</td><td><button type="button" class="small-btn" onclick="openDetails(${originalIndex})">Ver rubrica</button></td><td>${esc(r.generalNotes)}</td></tr>`);
   });
 }
 
@@ -86,7 +163,7 @@ function csv() {
       return found ? `${found.score ?? ''}${found.special ? ' ⚙️' : ''}` : '';
     });
     const detailed = answers.map(a => `${a.section} linha ${a.row}: ${a.score}${a.special ? ' ⚙️' : ''}${a.comment ? ' - ' + a.comment : ''}`).join(' | ');
-    out += [r.createdAtLocal, r.typeTitle, r.teamNumber, r.teamName, r.judge, r.room, ...qScores, r.total, r.awardTotal ?? '', r.avg, r.generalNotes, detailed].map(v => `"${String(v ?? '').replaceAll('"','""')}"`).join(';') + '\n';
+    out += [r.createdAtLocal, r.typeTitle, r.teamNumber, r.teamName, r.judge, r.room, ...qScores, calcTotal(r), calcAwardTotal(r), (getAnswers(r).length ? (calcTotal(r) / getAnswers(r).length).toFixed(2) : (r.avg || '')), r.generalNotes, detailed].map(v => `"${String(v ?? '').replaceAll('"','""')}"`).join(';') + '\n';
   });
   const blob = new Blob(['\ufeff' + out], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -123,5 +200,7 @@ document.getElementById('exportCsv').addEventListener('click', csv);
 document.getElementById('filterTeam').addEventListener('input', render);
 document.getElementById('filterType').addEventListener('change', render);
 document.getElementById('judgeForm').addEventListener('submit', createJudge);
+document.getElementById('closeModal').addEventListener('click', () => document.getElementById('detailModal').classList.add('hidden'));
+document.getElementById('detailModal').addEventListener('click', (e) => { if (e.target.id === 'detailModal') e.currentTarget.classList.add('hidden'); });
 load();
 loadJudges();

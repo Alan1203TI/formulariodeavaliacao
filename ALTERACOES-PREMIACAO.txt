@@ -1,0 +1,23 @@
+ALTERAÇÕES NA PONTUAÇÃO DE PREMIAÇÃO
+
+1. O cálculo correto ficou fixado assim:
+   - Total = soma simples de todas as questões.
+   - Bônus ⚙️ = soma das notas das questões marcadas como critério especial.
+   - Total Premiação = Total + Bônus ⚙️.
+
+Isso é equivalente a dizer que cada questão normal conta 1 vez e cada questão com ⚙️ conta 2 vezes.
+
+Exemplo:
+Se todas as 10 questões receberem nota 4 e 5 delas forem especiais:
+Total = 40
+Bônus ⚙️ = 20
+Total Premiação = 60
+
+2. O painel admin agora mostra:
+   - pontuação de cada questão Q1 a Q10;
+   - marcação ⚙️ nas questões especiais;
+   - botão "Ver rubrica" para abrir os detalhes completos;
+   - total normal;
+   - total premiação recalculado de forma correta.
+
+3. A exportação CSV também usa o cálculo corrigido.
