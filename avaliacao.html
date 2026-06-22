@@ -1,31 +1,39 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getFirestore, collection, getDocs, query, addDoc, serverTimestamp, where, limit } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getFirestore, collection, getDocs, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
 const user = JSON.parse(sessionStorage.getItem('fllUser') || localStorage.getItem('fllUser') || 'null');
-if (!user || user.role !== 'admin') location.href = 'index.html';
-document.getElementById('logout').addEventListener('click', () => { sessionStorage.removeItem('fllUser'); localStorage.removeItem('fllUser'); location.replace('index.html'); });
+if (!user || user.role !== 'admin') location.replace('index.html');
+document.getElementById('logout').addEventListener('click', () => {
+  sessionStorage.removeItem('fllUser');
+  localStorage.removeItem('fllUser');
+  location.replace('index.html');
+});
 
 let db = null;
 try { db = getFirestore(initializeApp(firebaseConfig)); } catch (e) { console.error(e); }
 let rows = [];
 let judges = [];
 
-function esc(v){ return String(v ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function esc(v){ return String(v ?? '').replace(/[&<>\"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m])); }
+function dateValue(r){
+  if (r.createdAt?.toDate) return r.createdAt.toDate().getTime();
+  if (r.createdAtLocal) return Date.parse(String(r.createdAtLocal).replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3')) || 0;
+  return 0;
+}
 
 async function load() {
   const status = document.getElementById('status');
   if (!db) { status.textContent = 'Firebase não inicializado.'; return; }
-  status.textContent = 'Carregando...';
+  status.textContent = 'Carregando avaliações...';
   try {
     const snap = await getDocs(collection(db, 'avaliacoes_fll'));
-    rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    rows.sort((a,b) => String(b.createdAtLocal || '').localeCompare(String(a.createdAtLocal || '')));
+    rows = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => dateValue(b) - dateValue(a));
     render();
     status.textContent = `${rows.length} avaliação(ões) encontrada(s).`;
   } catch (e) {
     console.error(e);
-    status.textContent = 'Erro ao carregar avaliações. Verifique se as regras do Firestore foram coladas exatamente como está no arquivo FIREBASE-REGRAS.txt.';
+    status.textContent = 'Erro ao carregar avaliações. Publique as regras do FIREBASE-REGRAS.txt no Firestore.';
   }
 }
 
@@ -35,13 +43,12 @@ async function loadJudges() {
   if (!db) return;
   try {
     const snap = await getDocs(collection(db, 'usuarios_fll'));
-    judges = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    judges.sort((a,b) => String(a.name || '').localeCompare(String(b.name || '')));
+    judges = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
     tbody.innerHTML = judges.length ? '' : '<tr><td colspan="4">Nenhum juiz criado ainda.</td></tr>';
     judges.forEach(j => tbody.insertAdjacentHTML('beforeend', `<tr><td>${esc(j.name)}</td><td>${esc(j.user)}</td><td>${esc(j.role)}</td><td>${j.active === false ? 'Inativo' : 'Ativo'}</td></tr>`));
   } catch (e) {
     console.error(e);
-    tbody.innerHTML = '<tr><td colspan="4">Erro ao carregar usuários. Verifique as regras do Firestore no arquivo FIREBASE-REGRAS.txt.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4">Erro ao carregar usuários. Publique as regras do FIREBASE-REGRAS.txt no Firestore.</td></tr>';
   }
 }
 
@@ -82,15 +89,16 @@ async function createJudge(e) {
   if (!name || !userName || !password) { msg.textContent = 'Preencha nome, usuário e senha.'; return; }
   if (!db) { msg.textContent = 'Firebase não inicializado.'; return; }
   try {
-    const exists = await getDocs(query(collection(db, 'usuarios_fll'), where('user', '==', userName), limit(1)));
-    if (!exists.empty) { msg.textContent = 'Já existe um usuário com esse nome de login.'; return; }
+    const snap = await getDocs(collection(db, 'usuarios_fll'));
+    const exists = snap.docs.some(d => String(d.data().user || '').trim() === userName);
+    if (exists) { msg.textContent = 'Já existe um usuário com esse login.'; return; }
     await addDoc(collection(db, 'usuarios_fll'), { name, user: userName, password, role: 'judge', active: true, createdAt: serverTimestamp(), createdAtLocal: new Date().toLocaleString('pt-BR') });
     msg.textContent = 'Juiz criado com sucesso!';
     e.target.reset();
     loadJudges();
   } catch (err) {
     console.error(err);
-    msg.textContent = 'Erro ao criar juiz. Verifique as regras do Firestore no arquivo FIREBASE-REGRAS.txt.';
+    msg.textContent = 'Erro ao criar juiz. Publique as regras do FIREBASE-REGRAS.txt no Firestore.';
   }
 }
 

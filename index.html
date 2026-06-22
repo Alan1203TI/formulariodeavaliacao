@@ -1,1 +1,21 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FLL - Avaliação Online</title><link rel="stylesheet" href="style.css"></head><body class="login-page"><main class="login-card"><div class="brand"><div class="logo">FLL</div><div><h1>Avaliação Online</h1><p>Projeto de Inovação e Design do Robô</p></div></div><form id="loginForm"><label>Usuário<input id="user" required autocomplete="username" placeholder="Digite seu usuário"></label><label>Senha<input id="password" required type="password" autocomplete="current-password" placeholder="Digite sua senha"></label><button type="submit">Entrar</button><p id="msg" class="msg"></p></form></main><script type="module" src="login.js"></script></body></html>
+REGRAS DO FIRESTORE PARA ESTE SISTEMA FLL
+
+Cole SOMENTE o bloco abaixo no Firebase Console:
+Firebase > Firestore Database > Regras > Publicar
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /avaliacoes_fll/{doc} {
+      allow read, write: if true;
+    }
+    match /usuarios_fll/{doc} {
+      allow read, write: if true;
+    }
+  }
+}
+
+IMPORTANTE:
+- Não coloque este texto dentro do GitHub como página principal.
+- O arquivo principal do site precisa ser o index.html.
+- Não use regra com request.time < timestamp.date(...), pois ela expira e bloqueia leitura/salvamento.
