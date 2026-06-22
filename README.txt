@@ -53,3 +53,7 @@ service cloud.firestore {
 OBSERVAÇÃO IMPORTANTE
 Este login usa usuário e senha salvos no Firestore para facilitar o evento.
 Para uma versão mais segura, o ideal é usar Firebase Authentication.
+
+
+CORREÇÃO DE ERRO AO CARREGAR AVALIAÇÕES
+Se aparecer erro no painel admin, cole as regras do arquivo FIREBASE-REGRAS.txt no Firestore. Também removi a ordenação direta por createdAt para evitar erro de consulta/index no Firebase. A ordenação agora é feita dentro do próprio programa.
