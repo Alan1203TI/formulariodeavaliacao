@@ -23,7 +23,7 @@ teamSelect.addEventListener('change',()=>{ const selected=teams.find(t=>t.id===t
 
 function renderRubric(){
   const r=rubrics[type.value]; if(!r){ rubricEl.innerHTML='<section class="panel"><p class="msg">Rubrica não encontrada.</p></section>'; return; }
-  let html=`<section class="panel ${r.color}"><div class="rubric-head"><div><h2>${esc(r.title)}</h2><p>Marque uma opção de <b>1 a 4</b> em cada linha: Fase Inicial, Em Desenvolvimento, Finalizado ou Excedente. As linhas com <b>⚙️</b> são Core Values e contam com o mesmo peso dos Critérios Técnicos.</p></div><button type="button" class="secondary" onclick="downloadRubricPDF('${esc(type.value)}')">Baixar PDF da rubrica</button></div></section>`;
+  let html=`<section class="panel ${r.color}"><div class="rubric-head"><div><h2>${esc(r.title)}</h2><p>Marque uma opção de <b>1 a 4</b> em cada linha: Fase Inicial, Em Desenvolvimento, Finalizado ou Excedente. As linhas com <b>⚙️</b> são Core Values e contam com o mesmo peso dos Critérios Técnicos.</p></div></div></section>`;
   let idx=0;
   r.items.forEach(item=>{ html += `<section class="panel rubric"><h3>${esc(item.section)}</h3><p>${esc(item.description)}</p>`; item.rows.forEach(rowObj=>{ idx++; const texts=Array.isArray(rowObj)?rowObj:rowObj.texts; const special=!!rowObj.special; html += `<div class="row" data-row="${idx}" data-section="${esc(item.section)}" data-special="${special}"><div class="row-title">${special?'<span class="gear">⚙️ Core Values</span>':'<span>Critério Técnico</span>'}</div><div class="criteria">`; texts.forEach((text,i)=>{ const score=i+1; const level=['Fase Inicial','Em Desenvolvimento','Finalizado','Excedente'][i]; html += `<label><input type="radio" name="score_${idx}" value="${score}" required><b>${score}</b> ${level}<small>${esc(text)}</small></label>`; }); html += `</div><textarea name="comment_${idx}" placeholder="Comentário da linha. Obrigatório se marcar 4 - Excedente."></textarea></div>`; }); html += '</section>'; });
   rubricEl.innerHTML=html;
@@ -31,16 +31,6 @@ function renderRubric(){
 
 type.addEventListener('change', renderRubric); renderRubric(); loadTeams();
 
-function downloadRubricPDF(kind){
-  const file = kind === 'robo' ? 'rubrica-robo.pdf' : 'rubrica-inovacao.pdf';
-  const link = document.createElement('a');
-  link.href = file;
-  link.download = file;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-}
-window.downloadRubricPDF = downloadRubricPDF;
 
 document.getElementById('evalForm').addEventListener('submit', async (e)=>{
   e.preventDefault(); const msg=document.getElementById('saveMsg'); msg.textContent='';
