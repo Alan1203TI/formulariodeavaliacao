@@ -31,14 +31,14 @@ function renderRubric(){
 
 type.addEventListener('change', renderRubric); renderRubric(); loadTeams();
 
-async function ensureJsPDF(){
-  if(window.jspdf?.jsPDF) return window.jspdf.jsPDF;
-  await new Promise((resolve,reject)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); });
-  return window.jspdf.jsPDF;
-}
-async function downloadRubricPDF(kind){
-  const r=rubrics[kind]; if(!r) return;
-  try { const jsPDF=await ensureJsPDF(); const doc=new jsPDF({unit:'pt',format:'a4'}); let y=40; const margin=40; const pageH=842; doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(r.title, margin, y); y+=24; doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text('Critério Técnico e Core Values têm o mesmo peso na pontuação.', margin, y); y+=24; let q=0; for(const item of r.items){ if(y>pageH-80){ doc.addPage(); y=40; } doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text(item.section, margin, y); y+=16; doc.setFont('helvetica','normal'); doc.setFontSize(9); const desc=doc.splitTextToSize(item.description, 515); doc.text(desc, margin, y); y += desc.length*11 + 8; for(const row of item.rows){ q++; const special=!!row.special; const texts=Array.isArray(row)?row:row.texts; if(y>pageH-120){ doc.addPage(); y=40; } doc.setFont('helvetica','bold'); doc.text(`Q${q} - ${special?'Core Values':'Critério Técnico'}`, margin, y); y+=13; doc.setFont('helvetica','normal'); ['1 Fase Inicial','2 Em Desenvolvimento','3 Finalizado','4 Excedente'].forEach((level,i)=>{ const lines=doc.splitTextToSize(`${level}: ${texts[i]}`, 500); doc.text(lines, margin+12, y); y += lines.length*10 + 4; }); y+=6; } y+=8; } doc.save(`rubrica-${kind}.pdf`); } catch(e){ console.error(e); alert('Não foi possível gerar o PDF. Verifique sua conexão com a internet.'); }
+function downloadRubricPDF(kind){
+  const file = kind === 'robo' ? 'rubrica-robo.pdf' : 'rubrica-inovacao.pdf';
+  const link = document.createElement('a');
+  link.href = file;
+  link.download = file;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 window.downloadRubricPDF = downloadRubricPDF;
 

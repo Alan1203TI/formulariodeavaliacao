@@ -1,0 +1,9 @@
+ALTERAÇÕES REALIZADAS
+
+1. Adicionada novamente a opção de baixar PDF da rubrica na tela de avaliação.
+2. Incluído painel "Rubricas em PDF" no Painel Admin.
+3. Criados os arquivos:
+   - rubrica-inovacao.pdf
+   - rubrica-robo.pdf
+4. Os PDFs foram gerados com o mesmo estilo visual do sistema: fundo escuro, cards arredondados, amarelo/verde e identificação de Critério Técnico/Core Values.
+5. Removida a dependência de biblioteca externa para gerar o PDF no navegador. Agora os PDFs já ficam prontos dentro do projeto.
