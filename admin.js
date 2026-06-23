@@ -48,6 +48,40 @@ function openDetails(index){
     <div class="detail-list">${answers.map(a=>`<div class="detail-item ${a.special?'special':''}"><div><b>Q${esc(a.row)}</b> — ${esc(a.section)} ${a.special?'<span class="gear">⚙️ Core Values</span>':'<span class="muted">Critério Técnico</span>'}</div><div>Nota: <b>${esc(a.score)}</b></div><small>${esc(rubricText(r,a))}</small>${a.comment?`<p><b>Comentário:</b> ${esc(a.comment)}</p>`:''}</div>`).join('')}</div>`;
   document.getElementById('detailModal').classList.remove('hidden');
 }
+
+function buildPdfHtml(r){
+  const answers = getAnswers(r);
+  const total = calcTotal(r);
+  const title = esc(r.typeTitle || r.type || 'Rubrica');
+  const equipe = esc(teamNameOf(r));
+  const sala = esc(r.room || '');
+  const data = esc(r.createdAtLocal || new Date().toLocaleString('pt-BR'));
+  const rowsHtml = answers.map(a=>`
+    <tr>
+      <td>Q${esc(a.row)}</td>
+      <td>${esc(a.section || '')}</td>
+      <td>${a.special ? 'Core Values' : 'Critério Técnico'}</td>
+      <td class="score">${esc(a.score ?? '')}</td>
+      <td>${esc(rubricText(r,a))}${a.comment ? `<br><b>Comentário:</b> ${esc(a.comment)}` : ''}</td>
+    </tr>`).join('');
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${title} - ${equipe}</title>
+  <style>
+    @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;background:#061b12;color:#f3fff0;margin:0;padding:22px}.card{border:1px solid rgba(255,255,255,.18);border-radius:22px;background:linear-gradient(135deg,#123b28,#0a2017);padding:24px}h1{font-size:30px;text-transform:uppercase;margin:0 0 8px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.meta div,.note{border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 12px;background:rgba(255,255,255,.06)}table{width:100%;border-collapse:separate;border-spacing:0 8px;margin-top:14px}th{font-size:11px;text-transform:uppercase;text-align:left;color:#dff5dc}td{background:rgba(255,255,255,.08);border-top:1px solid rgba(255,255,255,.16);border-bottom:1px solid rgba(255,255,255,.16);padding:10px;font-size:12px;vertical-align:top}td:first-child{border-left:1px solid rgba(255,255,255,.16);border-radius:12px 0 0 12px}td:last-child{border-right:1px solid rgba(255,255,255,.16);border-radius:0 12px 12px 0}.score{font-size:18px;font-weight:900;color:#ffdf4d;text-align:center}.total{font-size:24px;font-weight:900;color:#ffdf4d}.badge{display:inline-block;background:#ffdf4d;color:#08180f;padding:8px 14px;border-radius:999px;font-weight:900;text-transform:uppercase}.footer{margin-top:18px;font-size:11px;color:#d8ead4}@media print{body{background:#061b12;-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none}}
+  </style></head><body><div class="card"><div class="badge">FLL - Avaliação Online</div><h1>${title}</h1><div class="meta"><div><b>Equipe:</b><br>${equipe}</div><div><b>Sala:</b><br>${sala}</div><div><b>Data:</b><br>${data}</div><div><b>Total:</b><br><span class="total">${total}</span></div></div><div class="note">Critério Técnico e Core Values contam com o mesmo peso.</div><table><thead><tr><th>Questão</th><th>Grupo</th><th>Tipo</th><th>Nota</th><th>Descrição selecionada</th></tr></thead><tbody>${rowsHtml}</tbody></table><div class="footer">Documento gerado pelo sistema FLL - Avaliação Online.</div></div><script>window.onload=()=>{setTimeout(()=>window.print(),400)};<\/script></body></html>`;
+}
+
+function downloadEvaluationPdf(index){
+  const r = rows[index];
+  if(!r) return;
+  const html = buildPdfHtml(r);
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, '_blank');
+  if(!w){ alert('Permita pop-ups para gerar o PDF da rubrica.'); }
+  setTimeout(()=>URL.revokeObjectURL(url), 20000);
+}
+window.downloadEvaluationPdf = downloadEvaluationPdf;
+
 window.openDetails = openDetails;
 
 async function deleteEvaluation(id){
@@ -97,8 +131,8 @@ async function createTeam(e){
 function render(){
   const team=document.getElementById('filterTeam').value.toLowerCase(); const type=document.getElementById('filterType').value; const tb=document.querySelector('#table tbody'); tb.innerHTML='';
   const filtered=rows.filter(r=>(!type || r.type===type) && (!team || `${teamNameOf(r)}`.toLowerCase().includes(team)));
-  if(!filtered.length){ tb.innerHTML='<tr><td colspan="8">Nenhuma avaliação encontrada.</td></tr>'; return; }
-  filtered.forEach(r=>{ const originalIndex=rows.indexOf(r); const total=calcTotal(r); tb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.createdAtLocal)}</td><td>${esc(r.typeTitle || r.type)}</td><td><b>${esc(teamNameOf(r))}</b></td><td>${esc(r.room)}</td><td>${questionScores(r)}</td><td><b>${esc(total)}</b></td><td><button type="button" class="small-btn" onclick="openDetails(${originalIndex})">Ver rubrica</button></td><td><button type="button" class="small-btn danger" onclick="deleteEvaluation('${esc(r.id)}')">Apagar</button></td></tr>`); });
+  if(!filtered.length){ tb.innerHTML='<tr><td colspan="9">Nenhuma avaliação encontrada.</td></tr>'; return; }
+  filtered.forEach(r=>{ const originalIndex=rows.indexOf(r); const total=calcTotal(r); tb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.createdAtLocal)}</td><td>${esc(r.typeTitle || r.type)}</td><td><b>${esc(teamNameOf(r))}</b></td><td>${esc(r.room)}</td><td>${questionScores(r)}</td><td><b>${esc(total)}</b></td><td><button type="button" class="small-btn" onclick="openDetails(${originalIndex})">Ver rubrica</button></td><td><button type="button" class="small-btn pdf-btn" onclick="downloadEvaluationPdf(${originalIndex})">Baixar PDF</button></td><td><button type="button" class="small-btn danger" onclick="deleteEvaluation('${esc(r.id)}')">Apagar</button></td></tr>`); });
 }
 
 function csv(){
