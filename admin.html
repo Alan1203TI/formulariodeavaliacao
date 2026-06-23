@@ -1,1 +1,72 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Painel Admin FLL</title><link rel="stylesheet" href="style.css"></head><body><header class="top"><div><b>Painel Administrativo - FLL</b></div><button id="logout" class="ghost" type="button">Sair</button></header><main class="wrap"><section class="panel"><h1>Painel Admin</h1><div class="actions"><button id="load" type="button">Atualizar avaliações</button><button id="exportCsv" class="secondary" type="button">Exportar Excel/CSV</button></div><div class="grid3"><label>Filtrar equipe<input id="filterTeam" placeholder="número ou nome"></label><label>Tipo<select id="filterType"><option value="">Todos</option><option value="inovacao">Projeto de Inovação</option><option value="robo">Design do Robô</option></select></label></div><p id="status" class="msg"></p></section><section class="panel"><h2>Cadastrar equipes</h2><form id="teamForm" class="grid3"><label>Número da equipe<input id="teamNumberInput" required placeholder="Ex.: #9110"></label><label>Nome da equipe<input id="teamNameInput" required placeholder="Ex.: ATOMIC"></label><label>Sala padrão<input id="teamRoomInput" placeholder="Ex.: 1"></label><div class="actions"><button type="submit">Salvar equipe</button></div></form><p id="teamMsg" class="msg"></p><div class="table-wrap"><table id="teamsTable"><thead><tr><th>Número</th><th>Nome</th><th>Sala</th><th>Status</th></tr></thead><tbody></tbody></table></div></section><section class="panel"><h2>Criar usuário para juiz</h2><form id="judgeForm" class="grid3"><label>Nome do juiz<input id="judgeNameInput" required placeholder="Ex.: Juiz Sala 1"></label><label>Usuário<input id="judgeUserInput" required placeholder="Ex.: juiz_sala1"></label><label>Senha<input id="judgePassInput" required placeholder="Senha do juiz"></label><div class="actions"><button type="submit">Criar juiz</button></div></form><p id="judgeMsg" class="msg"></p><div class="table-wrap"><table id="judgesTable"><thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Status</th></tr></thead><tbody></tbody></table></div></section><section class="panel"><h2>Avaliações enviadas</h2><p class="hint">Total = soma das questões. Total Premiação = soma normal + bônus das questões marcadas com ⚙️, ou seja, cada critério especial conta em dobro.</p><div class="table-wrap"><table id="table"><thead><tr><th>Data</th><th>Tipo</th><th>Equipe</th><th>Juiz</th><th>Sala</th><th>Pontuação por questão</th><th>Total</th><th>Total Premiação</th><th>Média</th><th>Detalhes</th><th>Obs.</th></tr></thead><tbody></tbody></table></div></section></main><div id="detailModal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="ghost modal-close" type="button">Fechar</button><div id="modalContent"></div></div></div><script type="module" src="admin.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Painel Admin FLL</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div><b>Painel Administrativo - FLL</b></div>
+  <button id="logout" class="ghost" type="button">Sair</button>
+</header>
+<main class="wrap">
+  <section class="panel">
+    <h1>Painel Admin</h1>
+    <div class="actions">
+      <button id="load" type="button">Atualizar avaliações</button>
+      <button id="exportCsv" class="secondary" type="button">Exportar Excel/CSV</button>
+    </div>
+    <div class="grid3">
+      <label>Filtrar equipe<input id="filterTeam" placeholder="nome da equipe"></label>
+      <label>Tipo<select id="filterType"><option value="">Todos</option><option value="inovacao">Projeto de Inovação</option><option value="robo">Design do Robô</option></select></label>
+    </div>
+    <p id="status" class="msg"></p>
+  </section>
+
+  <section class="panel">
+    <h2>Ranking geral das equipes</h2>
+    <p class="hint">Ranking pela soma da melhor nota de <b>Projeto de Inovação</b> com a melhor nota de <b>Design do Robô</b>. Todas as questões têm o mesmo peso.</p>
+    <div class="table-wrap">
+      <table id="rankingTable">
+        <thead><tr><th>Posição</th><th>Equipe</th><th>Projeto de Inovação</th><th>Design do Robô</th><th>Total Geral</th><th>Total Core Values</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Cadastrar equipes</h2>
+    <form id="teamForm" class="grid3">
+      <label>Nome da equipe<input id="teamNameInput" required placeholder="Ex.: ATOMIC"></label>
+      <label>Sala padrão<input id="teamRoomInput" placeholder="Ex.: 1"></label>
+      <div class="actions"><button type="submit">Salvar equipe</button></div>
+    </form>
+    <p id="teamMsg" class="msg"></p>
+    <div class="table-wrap"><table id="teamsTable"><thead><tr><th>Nome</th><th>Sala</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel">
+    <h2>Criar usuário para juiz</h2>
+    <form id="judgeForm" class="grid3">
+      <label>Nome do juiz<input id="judgeNameInput" required placeholder="Ex.: Juiz Sala 1"></label>
+      <label>Usuário<input id="judgeUserInput" required placeholder="Ex.: juiz_sala1"></label>
+      <label>Senha<input id="judgePassInput" required placeholder="Senha do juiz"></label>
+      <div class="actions"><button type="submit">Criar juiz</button></div>
+    </form>
+    <p id="judgeMsg" class="msg"></p>
+    <div class="table-wrap"><table id="judgesTable"><thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel">
+    <h2>Avaliações enviadas</h2>
+    <p class="hint">Total = soma das questões. Total Core Values = soma normal + bônus das questões marcadas como ⚙️ Core Values, ou seja, cada Core Values conta em dobro.</p>
+    <div class="table-wrap"><table id="table"><thead><tr><th>Data</th><th>Tipo</th><th>Equipe</th><th>Juiz</th><th>Sala</th><th>Pontuação por questão</th><th>Total</th><th>Total Core Values</th><th>Detalhes</th></tr></thead><tbody></tbody></table></div>
+  </section>
+</main>
+<div id="detailModal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="ghost modal-close" type="button">Fechar</button><div id="modalContent"></div></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module" src="admin.js"></script>
+</body>
+</html>

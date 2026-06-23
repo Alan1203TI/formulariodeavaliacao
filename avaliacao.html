@@ -1,1 +1,24 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preencher Avaliação FLL</title><link rel="stylesheet" href="style.css"></head><body><header class="top"><div><b>FLL - Avaliação Online</b><span id="judgeName"></span></div><button id="logout" class="ghost" type="button">Sair</button></header><main class="wrap"><form id="evalForm"><section class="panel"><h1>Nova avaliação</h1><div class="grid3"><label>Tipo de avaliação<select id="type"><option value="inovacao">Projeto de Inovação</option><option value="robo">Design do Robô</option></select></label><label>Equipe cadastrada<select id="teamSelect" required><option value="">Carregando equipes...</option></select></label><label>Equipe #<input id="teamNumber" required readonly placeholder="Selecione a equipe"></label><label>Nome da equipe<input id="teamName" required readonly placeholder="Selecione a equipe"></label><label>Sala de avaliação<input id="room" placeholder="Será preenchida se tiver sala padrão"></label></div></section><div id="rubric"></div><section class="panel"><label>Observações gerais<textarea id="generalNotes" rows="4"></textarea></label><button type="submit">Enviar avaliação</button><p id="saveMsg" class="msg"></p></section></form></main><script type="module" src="avaliacao.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Preencher Avaliação FLL</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div><b>FLL - Avaliação Online</b><span id="judgeName"></span></div><button id="logout" class="ghost" type="button">Sair</button></header>
+<main class="wrap">
+  <form id="evalForm">
+    <section class="panel"><h1>Nova avaliação</h1><div class="grid3">
+      <label>Tipo de avaliação<select id="type"><option value="inovacao">Projeto de Inovação</option><option value="robo">Design do Robô</option></select></label>
+      <label>Equipe cadastrada<select id="teamSelect" required><option value="">Carregando equipes...</option></select></label>
+      <label>Sala de avaliação<input id="room" placeholder="Será preenchida se tiver sala padrão"></label>
+    </div></section>
+    <div id="rubric"></div>
+    <section class="panel"><button type="submit">Enviar avaliação</button><p id="saveMsg" class="msg"></p></section>
+  </form>
+</main>
+<script type="module" src="avaliacao.js"></script>
+</body>
+</html>

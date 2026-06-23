@@ -1,0 +1,11 @@
+ALTERAÇÕES REALIZADAS NESTA VERSÃO
+
+1. Equipes agora usam apenas NOME, sem número.
+2. "Critério Normal" foi alterado para "Critério Técnico".
+3. "Critério Especial" foi alterado para "Core Values".
+4. "Excelente" foi alterado para "Excedente".
+5. Observações gerais foram removidas da página de avaliação.
+6. Média das notas foi removida do painel admin e da exportação.
+7. Painel admin recebeu Ranking Geral das Equipes, somando a melhor nota de Projeto de Inovação com a melhor nota de Design do Robô.
+8. Cada avaliação/rubrica no painel admin agora possui botão "Baixar PDF".
+9. Exportação CSV foi atualizada sem número de equipe e sem média.
