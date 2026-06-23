@@ -1,20 +1,17 @@
-CONFERÊNCIA DA VERSÃO ATUALIZADA
+CONFERÊNCIA DOS ARQUIVOS - FLL AVALIAÇÃO ONLINE
 
-Arquivos principais conferidos:
-- index.html / login.js
-- firebase-config.js
-- avaliacao.html / avaliacao.js
-- admin.html / admin.js
-- data.js
-- style.css
+Arquivos conferidos:
+- index.html: tela de login correta, sem instrução mostrando senha.
+- login.js: login admin local e login de juízes pelo Firestore.
+- firebase-config.js: configuração do Firebase informada pelo usuário.
+- data.js: rubricas Projeto de Inovação e Design do Robô com níveis 1, 2, 3 e 4 e critérios ⚙️ marcados.
+- avaliacao.html: formulário com identificação da equipe, sala e área das rubricas.
+- avaliacao.js: renderiza as rubricas, exige nota em todas as linhas e comentário obrigatório ao marcar 4 - Excelente. Salva em avaliacoes.
+- admin.html: painel admin, criação de juiz, filtro e tabela de avaliações.
+- admin.js: carrega avaliações, cria usuários juízes e exporta CSV.
+- style.css: visual estilo sistema de pontuação da robótica.
+- FIREBASE-REGRAS.txt: regras do Firestore para o modelo atual.
 
-Alterações conferidas:
-- Cadastro de equipes sem número, apenas nome e sala padrão.
-- Seleção de equipe cadastrada na página de avaliação.
-- Rubricas completas com níveis: Fase Inicial, Em Desenvolvimento, Finalizado e Excedente.
-- Termos ajustados: Critério Técnico e Core Values.
-- Observações gerais removidas da avaliação.
-- Média removida do painel admin e do CSV.
-- Ranking geral criado no admin, somando Projeto de Inovação + Design do Robô.
-- Botão Baixar PDF criado para cada rubrica enviada.
-- Total Core Values mantém a regra de critérios ⚙️ em dobro.
+Correção nesta versão:
+- Ajustado cabeçalho da tabela do painel admin para exibir Total Premiação, Média e Observações na ordem correta.
+- Conferência de sintaxe JavaScript realizada sem erros.

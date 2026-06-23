@@ -5,120 +5,51 @@ import { rubrics } from './data.js';
 const storedUser = sessionStorage.getItem('fllUser') || localStorage.getItem('fllUser') || 'null';
 const user = JSON.parse(storedUser);
 if (!user || user.role !== 'judge') location.href = 'index.html';
-
 function sair(){ sessionStorage.removeItem('fllUser'); localStorage.removeItem('fllUser'); location.replace('index.html'); }
-document.getElementById('judgeName').textContent = user ? ' | ' + user.name : '';
 document.getElementById('logout').addEventListener('click', sair);
 
 const type = document.getElementById('type');
 const rubricEl = document.getElementById('rubric');
 const teamSelect = document.getElementById('teamSelect');
 let teams = [];
-function esc(v){ return String(v ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
-function teamLabel(t){ return String(t.name || t.teamName || '').trim(); }
+function esc(v){ return String(v ?? '').replace(/[&<>\"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m])); }
 
-async function loadTeams() {
-  teamSelect.innerHTML = '<option value="">Carregando equipes...</option>';
-  try {
-    const snap = await getDocs(collection(db, 'equipes'));
-    teams = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      .filter(t => t.active !== false)
-      .sort((a,b)=>teamLabel(a).localeCompare(teamLabel(b), 'pt-BR', {numeric:true}));
-    if (!teams.length) {
-      teamSelect.innerHTML = '<option value="">Nenhuma equipe cadastrada no painel admin</option>';
-      return;
-    }
-    teamSelect.innerHTML = '<option value="">Selecione a equipe</option>' + teams.map(t => `<option value="${esc(t.id)}">${esc(teamLabel(t))}</option>`).join('');
-  } catch (e) {
-    console.error(e);
-    teamSelect.innerHTML = '<option value="">Erro ao carregar equipes</option>';
-  }
+async function loadTeams(){
+  teamSelect.innerHTML='<option value="">Carregando equipes...</option>';
+  try { const snap=await getDocs(collection(db,'equipes')); teams=snap.docs.map(d=>({id:d.id,...d.data()})).filter(t=>t.active!==false).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))); teamSelect.innerHTML = teams.length ? '<option value="">Selecione a equipe</option>'+teams.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('') : '<option value="">Nenhuma equipe cadastrada no painel admin</option>'; }
+  catch(e){ console.error(e); teamSelect.innerHTML='<option value="">Erro ao carregar equipes</option>'; }
+}
+teamSelect.addEventListener('change',()=>{ const selected=teams.find(t=>t.id===teamSelect.value); const roomInput=document.getElementById('room'); if(selected && selected.room && !roomInput.value.trim()) roomInput.value=selected.room; });
+
+function renderRubric(){
+  const r=rubrics[type.value]; if(!r){ rubricEl.innerHTML='<section class="panel"><p class="msg">Rubrica não encontrada.</p></section>'; return; }
+  let html=`<section class="panel ${r.color}"><div class="rubric-head"><div><h2>${esc(r.title)}</h2><p>Marque uma opção de <b>1 a 4</b> em cada linha: Fase Inicial, Em Desenvolvimento, Finalizado ou Excedente. As linhas com <b>⚙️</b> são Core Values e contam com o mesmo peso dos Critérios Técnicos.</p></div><button type="button" class="secondary" onclick="downloadRubricPDF('${esc(type.value)}')">Baixar PDF da rubrica</button></div></section>`;
+  let idx=0;
+  r.items.forEach(item=>{ html += `<section class="panel rubric"><h3>${esc(item.section)}</h3><p>${esc(item.description)}</p>`; item.rows.forEach(rowObj=>{ idx++; const texts=Array.isArray(rowObj)?rowObj:rowObj.texts; const special=!!rowObj.special; html += `<div class="row" data-row="${idx}" data-section="${esc(item.section)}" data-special="${special}"><div class="row-title">${special?'<span class="gear">⚙️ Core Values</span>':'<span>Critério Técnico</span>'}</div><div class="criteria">`; texts.forEach((text,i)=>{ const score=i+1; const level=['Fase Inicial','Em Desenvolvimento','Finalizado','Excedente'][i]; html += `<label><input type="radio" name="score_${idx}" value="${score}" required><b>${score}</b> ${level}<small>${esc(text)}</small></label>`; }); html += `</div><textarea name="comment_${idx}" placeholder="Comentário da linha. Obrigatório se marcar 4 - Excedente."></textarea></div>`; }); html += '</section>'; });
+  rubricEl.innerHTML=html;
 }
 
-teamSelect.addEventListener('change', () => {
-  const selected = teams.find(t => t.id === teamSelect.value);
-  const roomInput = document.getElementById('room');
-  roomInput.value = selected?.room || '';
-});
+type.addEventListener('change', renderRubric); renderRubric(); loadTeams();
 
-function renderRubric() {
-  const r = rubrics[type.value];
-  if (!r) { rubricEl.innerHTML = '<section class="panel"><p class="msg">Rubrica não encontrada.</p></section>'; return; }
-  let html = `<section class="panel ${r.color}"><h2>${esc(r.title)}</h2><p>Marque uma opção de <b>1 a 4</b> em cada linha: Fase Inicial, Em Desenvolvimento, Finalizado ou Excedente. As linhas com <b>⚙️ Core Values</b> entram também na pontuação dobrada de premiações.</p></section>`;
-  let idx = 0;
-  r.items.forEach(item => {
-    html += `<section class="panel rubric"><h3>${esc(item.section)}</h3><p>${esc(item.description)}</p>`;
-    item.rows.forEach(rowObj => {
-      idx++;
-      const texts = Array.isArray(rowObj) ? rowObj : rowObj.texts;
-      const special = !!rowObj.special;
-      html += `<div class="row" data-row="${idx}" data-section="${esc(item.section)}" data-special="${special}"><div class="row-title">${special ? '<span class="gear">⚙️ Core Values</span>' : '<span>Critério Técnico</span>'}</div><div class="criteria">`;
-      texts.forEach((text, i) => {
-        const score = i + 1;
-        const level = ['Fase Inicial','Em Desenvolvimento','Finalizado','Excedente'][i];
-        html += `<label><input type="radio" name="score_${idx}" value="${score}" required><b>${score}</b> ${level}<small>${esc(text)}</small></label>`;
-      });
-      html += `</div><textarea name="comment_${idx}" placeholder="Comentário da linha. Obrigatório se marcar 4 - Excedente."></textarea></div>`;
-    });
-    html += '</section>';
-  });
-  rubricEl.innerHTML = html;
+async function ensureJsPDF(){
+  if(window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+  await new Promise((resolve,reject)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); });
+  return window.jspdf.jsPDF;
 }
+async function downloadRubricPDF(kind){
+  const r=rubrics[kind]; if(!r) return;
+  try { const jsPDF=await ensureJsPDF(); const doc=new jsPDF({unit:'pt',format:'a4'}); let y=40; const margin=40; const pageH=842; doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(r.title, margin, y); y+=24; doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text('Critério Técnico e Core Values têm o mesmo peso na pontuação.', margin, y); y+=24; let q=0; for(const item of r.items){ if(y>pageH-80){ doc.addPage(); y=40; } doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text(item.section, margin, y); y+=16; doc.setFont('helvetica','normal'); doc.setFontSize(9); const desc=doc.splitTextToSize(item.description, 515); doc.text(desc, margin, y); y += desc.length*11 + 8; for(const row of item.rows){ q++; const special=!!row.special; const texts=Array.isArray(row)?row:row.texts; if(y>pageH-120){ doc.addPage(); y=40; } doc.setFont('helvetica','bold'); doc.text(`Q${q} - ${special?'Core Values':'Critério Técnico'}`, margin, y); y+=13; doc.setFont('helvetica','normal'); ['1 Fase Inicial','2 Em Desenvolvimento','3 Finalizado','4 Excedente'].forEach((level,i)=>{ const lines=doc.splitTextToSize(`${level}: ${texts[i]}`, 500); doc.text(lines, margin+12, y); y += lines.length*10 + 4; }); y+=6; } y+=8; } doc.save(`rubrica-${kind}.pdf`); } catch(e){ console.error(e); alert('Não foi possível gerar o PDF. Verifique sua conexão com a internet.'); }
+}
+window.downloadRubricPDF = downloadRubricPDF;
 
-type.addEventListener('change', renderRubric);
-renderRubric();
-loadTeams();
-
-document.getElementById('evalForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const msg = document.getElementById('saveMsg');
-  msg.textContent = '';
-  const selected = teams.find(t => t.id === teamSelect.value);
-  const teamName = selected ? teamLabel(selected) : '';
-  if (!teamName) { msg.textContent = 'Selecione uma equipe cadastrada.'; return; }
-
-  const answers = [];
-  let valid = true;
-  document.querySelectorAll('.row').forEach(row => {
-    const n = row.dataset.row;
-    const checked = row.querySelector(`input[name="score_${n}"]:checked`);
-    const comment = row.querySelector(`textarea[name="comment_${n}"]`).value.trim();
-    const special = row.dataset.special === 'true';
-    if (!checked || (checked.value === '4' && !comment)) { valid = false; row.classList.add('error'); }
-    else row.classList.remove('error');
-    answers.push({ row: Number(n), section: row.dataset.section, special, score: checked ? Number(checked.value) : null, comment });
-  });
-  if (!valid) { msg.textContent = 'Confira as linhas em vermelho. Todas precisam de nota e as notas 4 precisam de comentário.'; return; }
-
-  const total = answers.reduce((s, a) => s + (a.score || 0), 0);
-  const awardTotal = answers.reduce((s, a) => s + ((a.score || 0) * (a.special ? 2 : 1)), 0);
-  const specialTotal = answers.filter(a => a.special).reduce((s, a) => s + (a.score || 0), 0);
-  const payload = {
-    type: type.value,
-    typeTitle: rubrics[type.value].title,
-    teamId: selected.id,
-    teamName,
-    room: document.getElementById('room').value.trim(),
-    judge: user.name,
-    judgeUser: user.user,
-    answers,
-    total,
-    specialTotal,
-    awardTotal,
-    createdAt: serverTimestamp(),
-    createdAtLocal: new Date().toLocaleString('pt-BR')
-  };
-
-  try {
-    if (!db) throw new Error('Firebase não inicializado');
-    await addDoc(collection(db, 'avaliacoes'), payload);
-    msg.textContent = 'Avaliação enviada com sucesso!';
-    e.target.reset();
-    renderRubric();
-    loadTeams();
-    window.scrollTo(0, 0);
-  } catch (err) {
-    console.error(err);
-    msg.textContent = 'Erro ao salvar. Confira as regras do Firestore e a conexão com o Firebase.';
-  }
+document.getElementById('evalForm').addEventListener('submit', async (e)=>{
+  e.preventDefault(); const msg=document.getElementById('saveMsg'); msg.textContent='';
+  const selected=teams.find(t=>t.id===teamSelect.value); if(!selected){ msg.textContent='Selecione uma equipe cadastrada.'; return; }
+  const answers=[]; let valid=true;
+  document.querySelectorAll('.row').forEach(row=>{ const n=row.dataset.row; const checked=row.querySelector(`input[name="score_${n}"]:checked`); const comment=row.querySelector(`textarea[name="comment_${n}"]`).value.trim(); const special=row.dataset.special==='true'; if(!checked || (checked.value==='4' && !comment)){ valid=false; row.classList.add('error'); } else row.classList.remove('error'); answers.push({ row:Number(n), section:row.dataset.section, special, score:checked?Number(checked.value):null, comment }); });
+  if(!valid){ msg.textContent='Confira as linhas em vermelho. Todas precisam de nota e as notas 4 precisam de comentário.'; return; }
+  const total=answers.reduce((s,a)=>s+(a.score||0),0);
+  const payload={ type:type.value, typeTitle:rubrics[type.value].title, teamName:selected.name || '', teamId:selected.id, room:document.getElementById('room').value.trim(), judgeUser:user.user, answers, total, awardTotal:total, createdAt:serverTimestamp(), createdAtLocal:new Date().toLocaleString('pt-BR') };
+  try { if(!db) throw new Error('Firebase não inicializado'); await addDoc(collection(db,'avaliacoes'), payload); msg.textContent='Avaliação enviada com sucesso!'; e.target.reset(); renderRubric(); loadTeams(); window.scrollTo(0,0); }
+  catch(err){ console.error(err); msg.textContent='Erro ao salvar. Confira as regras do Firestore e a conexão com o Firebase.'; }
 });

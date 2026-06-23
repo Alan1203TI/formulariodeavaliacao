@@ -1,0 +1,9 @@
+Alterações realizadas:
+- Removido o nome do juiz das telas, tabelas e exportação.
+- Adicionada opção de apagar avaliação enviada no painel admin.
+- Adicionada opção de deletar usuário criado no painel admin.
+- Core Values agora soma com o mesmo peso do Critério Técnico. Não há bônus ou pontuação dobrada.
+- Mantidas equipes apenas por nome.
+- Removidas média e observações gerais.
+- Ranking geral soma Projeto de Inovação + Design do Robô.
+- Adicionado botão para baixar PDF da rubrica na tela de avaliação.

@@ -2,7 +2,7 @@ ALTERAÇÕES NA PONTUAÇÃO DE PREMIAÇÃO
 
 1. O cálculo correto ficou fixado assim:
    - Total = soma simples de todas as questões.
-   - Bônus ⚙️ = soma das notas das questões marcadas como Core Values.
+   - Bônus ⚙️ = soma das notas das questões marcadas como critério especial.
    - Total Premiação = Total + Bônus ⚙️.
 
 Isso é equivalente a dizer que cada questão normal conta 1 vez e cada questão com ⚙️ conta 2 vezes.
