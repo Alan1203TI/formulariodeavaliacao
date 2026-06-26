@@ -10,7 +10,7 @@ let rows = [];
 let judges = [];
 let teams = [];
 
-function esc(v){ return String(v ?? '').replace(/[&<>\"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m])); }
+function esc(v){ return String(v ?? '').replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m])); }
 function dateValue(r){ if (r.createdAt?.toDate) return r.createdAt.toDate().getTime(); if (r.createdAtLocal) return Date.parse(String(r.createdAtLocal).replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3')) || 0; return 0; }
 function getAnswers(r){ return Array.isArray(r.answers) ? r.answers : []; }
 function calcTotal(r){ const answers = getAnswers(r); if (!answers.length && r.total != null) return Number(r.total) || 0; return answers.reduce((s,a)=>s+(Number(a.score)||0),0); }
@@ -45,6 +45,7 @@ function openDetails(index){
     <p><b>${esc(r.typeTitle || r.type)}</b> — Equipe <b>${esc(teamNameOf(r))}</b></p>
     <p>Sala: <b>${esc(r.room)}</b> | Data: ${esc(r.createdAtLocal)}</p>
     <div class="calc-box"><b>Total:</b> ${total}<small>Critério Técnico e Core Values contam com o mesmo peso.</small></div>
+    ${r.generalComment ? `<div class="detail-item"><b>Comentário geral:</b><p>${esc(r.generalComment)}</p></div>` : ''}
     <div class="detail-list">${answers.map(a=>`<div class="detail-item ${a.special?'special':''}"><div><b>Q${esc(a.row)}</b> — ${esc(a.section)} ${a.special?'<span class="gear">⚙️ Core Values</span>':'<span class="muted">Critério Técnico</span>'}</div><div>Nota: <b>${esc(a.score)}</b></div><small>${esc(rubricText(r,a))}</small>${a.comment?`<p><b>Comentário:</b> ${esc(a.comment)}</p>`:''}</div>`).join('')}</div>`;
   document.getElementById('detailModal').classList.remove('hidden');
 }
@@ -56,6 +57,7 @@ function buildPdfHtml(r){
   const equipe = esc(teamNameOf(r));
   const sala = esc(r.room || '');
   const data = esc(r.createdAtLocal || new Date().toLocaleString('pt-BR'));
+  const generalComment = esc(r.generalComment || '');
   const rowsHtml = answers.map(a=>`
     <tr>
       <td>Q${esc(a.row)}</td>
@@ -67,7 +69,7 @@ function buildPdfHtml(r){
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${title} - ${equipe}</title>
   <style>
     @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;background:#061b12;color:#f3fff0;margin:0;padding:22px}.card{border:1px solid rgba(255,255,255,.18);border-radius:22px;background:linear-gradient(135deg,#123b28,#0a2017);padding:24px}h1{font-size:30px;text-transform:uppercase;margin:0 0 8px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.meta div,.note{border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 12px;background:rgba(255,255,255,.06)}table{width:100%;border-collapse:separate;border-spacing:0 8px;margin-top:14px}th{font-size:11px;text-transform:uppercase;text-align:left;color:#dff5dc}td{background:rgba(255,255,255,.08);border-top:1px solid rgba(255,255,255,.16);border-bottom:1px solid rgba(255,255,255,.16);padding:10px;font-size:12px;vertical-align:top}td:first-child{border-left:1px solid rgba(255,255,255,.16);border-radius:12px 0 0 12px}td:last-child{border-right:1px solid rgba(255,255,255,.16);border-radius:0 12px 12px 0}.score{font-size:18px;font-weight:900;color:#ffdf4d;text-align:center}.total{font-size:24px;font-weight:900;color:#ffdf4d}.badge{display:inline-block;background:#ffdf4d;color:#08180f;padding:8px 14px;border-radius:999px;font-weight:900;text-transform:uppercase}.footer{margin-top:18px;font-size:11px;color:#d8ead4}@media print{body{background:#061b12;-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none}}
-  </style></head><body><div class="card"><div class="badge">FLL - Avaliação Online</div><h1>${title}</h1><div class="meta"><div><b>Equipe:</b><br>${equipe}</div><div><b>Sala:</b><br>${sala}</div><div><b>Data:</b><br>${data}</div><div><b>Total:</b><br><span class="total">${total}</span></div></div><div class="note">Critério Técnico e Core Values contam com o mesmo peso.</div><table><thead><tr><th>Questão</th><th>Grupo</th><th>Tipo</th><th>Nota</th><th>Descrição selecionada</th></tr></thead><tbody>${rowsHtml}</tbody></table><div class="footer">Documento gerado pelo sistema FLL - Avaliação Online.</div></div><script>window.onload=()=>{setTimeout(()=>window.print(),400)};<\/script></body></html>`;
+  </style></head><body><div class="card"><div class="badge">FLL - Avaliação Online</div><h1>${title}</h1><div class="meta"><div><b>Equipe:</b><br>${equipe}</div><div><b>Sala:</b><br>${sala}</div><div><b>Data:</b><br>${data}</div><div><b>Total:</b><br><span class="total">${total}</span></div></div><div class="note">Critério Técnico e Core Values contam com o mesmo peso.</div>${generalComment ? `<div class="note"><b>Comentário geral:</b><br>${generalComment}</div>` : ''}<table><thead><tr><th>Questão</th><th>Grupo</th><th>Tipo</th><th>Nota</th><th>Descrição selecionada</th></tr></thead><tbody>${rowsHtml}</tbody></table><div class="footer">Documento gerado pelo sistema FLL - Avaliação Online.</div></div><script>window.onload=()=>{setTimeout(()=>window.print(),400)};<\/script></body></html>`;
 }
 
 function downloadEvaluationPdf(index){
@@ -116,10 +118,18 @@ async function loadJudges(){
 }
 
 async function loadTeams(){
-  const tbody=document.querySelector('#teamsTable tbody'); tbody.innerHTML='<tr><td colspan="3">Carregando equipes...</td></tr>'; if(!db) return;
-  try { const snap=await getDocs(collection(db,'equipes')); teams=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))); tbody.innerHTML=teams.length?'':'<tr><td colspan="3">Nenhuma equipe cadastrada ainda.</td></tr>'; teams.forEach(t=>tbody.insertAdjacentHTML('beforeend', `<tr><td><b>${esc(t.name)}</b></td><td>${esc(t.room || '')}</td><td>${t.active===false?'Inativa':'Ativa'}</td></tr>`)); }
-  catch(e){ console.error(e); tbody.innerHTML='<tr><td colspan="3">Erro ao carregar equipes.</td></tr>'; }
+  const tbody=document.querySelector('#teamsTable tbody'); tbody.innerHTML='<tr><td colspan="4">Carregando equipes...</td></tr>'; if(!db) return;
+  try { const snap=await getDocs(collection(db,'equipes')); teams=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))); tbody.innerHTML=teams.length?'':'<tr><td colspan="4">Nenhuma equipe cadastrada ainda.</td></tr>'; teams.forEach(t=>tbody.insertAdjacentHTML('beforeend', `<tr><td><b>${esc(t.name)}</b></td><td>${esc(t.room || '')}</td><td>${t.active===false?'Inativa':'Ativa'}</td><td><button type="button" class="small-btn danger" onclick="deleteTeam('${esc(t.id)}','${esc(t.name)}')">Excluir</button></td></tr>`)); }
+  catch(e){ console.error(e); tbody.innerHTML='<tr><td colspan="4">Erro ao carregar equipes.</td></tr>'; }
 }
+
+async function deleteTeam(id, name){
+  if(!id) return;
+  if(!confirm(`Deseja excluir a equipe ${name}? As avaliações já enviadas dessa equipe não serão apagadas.`)) return;
+  try { await deleteDoc(doc(db, 'equipes', id)); await loadTeams(); }
+  catch(e){ console.error(e); alert('Erro ao excluir equipe. Confira as regras do Firestore.'); }
+}
+window.deleteTeam = deleteTeam;
 
 async function createTeam(e){
   e.preventDefault(); const msg=document.getElementById('teamMsg'); msg.textContent='Salvando equipe...'; const name=document.getElementById('teamNameInput').value.trim(); const room=document.getElementById('teamRoomInput').value.trim();
@@ -131,14 +141,14 @@ async function createTeam(e){
 function render(){
   const team=document.getElementById('filterTeam').value.toLowerCase(); const type=document.getElementById('filterType').value; const tb=document.querySelector('#table tbody'); tb.innerHTML='';
   const filtered=rows.filter(r=>(!type || r.type===type) && (!team || `${teamNameOf(r)}`.toLowerCase().includes(team)));
-  if(!filtered.length){ tb.innerHTML='<tr><td colspan="9">Nenhuma avaliação encontrada.</td></tr>'; return; }
-  filtered.forEach(r=>{ const originalIndex=rows.indexOf(r); const total=calcTotal(r); tb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.createdAtLocal)}</td><td>${esc(r.typeTitle || r.type)}</td><td><b>${esc(teamNameOf(r))}</b></td><td>${esc(r.room)}</td><td>${questionScores(r)}</td><td><b>${esc(total)}</b></td><td><button type="button" class="small-btn" onclick="openDetails(${originalIndex})">Ver rubrica</button></td><td><button type="button" class="small-btn pdf-btn" onclick="downloadEvaluationPdf(${originalIndex})">Baixar PDF</button></td><td><button type="button" class="small-btn danger" onclick="deleteEvaluation('${esc(r.id)}')">Apagar</button></td></tr>`); });
+  if(!filtered.length){ tb.innerHTML='<tr><td colspan="10">Nenhuma avaliação encontrada.</td></tr>'; return; }
+  filtered.forEach(r=>{ const originalIndex=rows.indexOf(r); const total=calcTotal(r); tb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.createdAtLocal)}</td><td>${esc(r.typeTitle || r.type)}</td><td><b>${esc(teamNameOf(r))}</b></td><td>${esc(r.room)}</td><td>${questionScores(r)}</td><td>${r.generalComment ? esc(r.generalComment) : '<span class="muted">Sem comentário</span>'}</td><td><b>${esc(total)}</b></td><td><button type="button" class="small-btn" onclick="openDetails(${originalIndex})">Ver rubrica</button></td><td><button type="button" class="small-btn pdf-btn" onclick="downloadEvaluationPdf(${originalIndex})">Baixar PDF</button></td><td><button type="button" class="small-btn danger" onclick="deleteEvaluation('${esc(r.id)}')">Apagar</button></td></tr>`); });
 }
 
 function csv(){
   const visibleRows=rows.filter(r=>{ const team=document.getElementById('filterTeam').value.toLowerCase(); const type=document.getElementById('filterType').value; return (!type || r.type===type) && (!team || `${teamNameOf(r)}`.toLowerCase().includes(team)); });
-  let out='Data;Tipo;Equipe;Sala;Q1;Q2;Q3;Q4;Q5;Q6;Q7;Q8;Q9;Q10;Total;Respostas Detalhadas\n';
-  visibleRows.forEach(r=>{ const answers=getAnswers(r); const qScores=Array.from({length:10},(_,i)=>{ const found=answers.find(a=>Number(a.row)===i+1); return found ? `${found.score ?? ''}${found.special?' ⚙️':''}` : ''; }); const detailed=answers.map(a=>`${a.section} linha ${a.row}: ${a.score}${a.special?' ⚙️ Core Values':' Critério Técnico'}${a.comment?' - '+a.comment:''}`).join(' | '); out += [r.createdAtLocal,r.typeTitle,teamNameOf(r),r.room,...qScores,calcTotal(r),detailed].map(v=>`"${String(v ?? '').replaceAll('"','""')}"`).join(';')+'\n'; });
+  let out='Data;Tipo;Equipe;Sala;Comentário Geral;Q1;Q2;Q3;Q4;Q5;Q6;Q7;Q8;Q9;Q10;Total;Respostas Detalhadas\n';
+  visibleRows.forEach(r=>{ const answers=getAnswers(r); const qScores=Array.from({length:10},(_,i)=>{ const found=answers.find(a=>Number(a.row)===i+1); return found ? `${found.score ?? ''}${found.special?' ⚙️':''}` : ''; }); const detailed=answers.map(a=>`${a.section} linha ${a.row}: ${a.score}${a.special?' ⚙️ Core Values':' Critério Técnico'}${a.comment?' - '+a.comment:''}`).join(' | '); out += [r.createdAtLocal,r.typeTitle,teamNameOf(r),r.room,r.generalComment || '',...qScores,calcTotal(r),detailed].map(v=>`"${String(v ?? '').replaceAll('"','""')}"`).join(';')+'\n'; });
   const blob=new Blob(['\ufeff'+out],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='avaliacoes-fll.csv'; a.click();
 }
 

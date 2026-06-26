@@ -20,23 +20,24 @@
     <p class="hint">Soma da avaliação de Projeto de Inovação + Design do Robô. Critérios Técnicos e Core Values têm o mesmo peso.</p>
     <div class="table-wrap"><table id="rankingTable"><thead><tr><th>Posição</th><th>Equipe</th><th>Projeto de Inovação</th><th>Design do Robô</th><th>Total Geral</th></tr></thead><tbody></tbody></table></div>
   </section>
+
+  <section class="panel">
+    <h2>Avaliações enviadas</h2>
+    <p class="hint">Total = soma de todas as questões. Critério Técnico e Core Values contam com o mesmo peso.</p>
+    <div class="table-wrap"><table id="table"><thead><tr><th>Data</th><th>Tipo</th><th>Equipe</th><th>Sala</th><th>Pontuação por questão</th><th>Comentário geral</th><th>Total</th><th>Detalhes</th><th>PDF</th><th>Ações</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
   <section class="panel">
     <h2>Cadastrar equipes</h2>
     <form id="teamForm" class="grid3"><label>Nome da equipe<input id="teamNameInput" required placeholder="Ex.: ATOMIC"></label><label>Sala padrão<input id="teamRoomInput" placeholder="Ex.: 1"></label><div class="actions"><button type="submit">Salvar equipe</button></div></form>
     <p id="teamMsg" class="msg"></p>
-    <div class="table-wrap"><table id="teamsTable"><thead><tr><th>Nome</th><th>Sala</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+    <div class="table-wrap"><table id="teamsTable"><thead><tr><th>Nome</th><th>Sala</th><th>Status</th><th>Ações</th></tr></thead><tbody></tbody></table></div>
   </section>
   <section class="panel">
     <h2>Criar usuário para juiz</h2>
     <form id="judgeForm" class="grid3"><label>Usuário<input id="judgeUserInput" required placeholder="Ex.: juiz_sala1"></label><label>Senha<input id="judgePassInput" required placeholder="Senha do juiz"></label><div class="actions"><button type="submit">Criar usuário</button></div></form>
     <p id="judgeMsg" class="msg"></p>
     <div class="table-wrap"><table id="judgesTable"><thead><tr><th>Usuário</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead><tbody></tbody></table></div>
-  </section>
-
-  <section class="panel">
-    <h2>Avaliações enviadas</h2>
-    <p class="hint">Total = soma de todas as questões. Critério Técnico e Core Values contam com o mesmo peso.</p>
-    <div class="table-wrap"><table id="table"><thead><tr><th>Data</th><th>Tipo</th><th>Equipe</th><th>Sala</th><th>Pontuação por questão</th><th>Total</th><th>Detalhes</th><th>PDF</th><th>Ações</th></tr></thead><tbody></tbody></table></div>
   </section>
 </main>
 <div id="detailModal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="ghost modal-close" type="button">Fechar</button><div id="modalContent"></div></div></div>
