@@ -20,7 +20,7 @@ async function loadTeams(){
   try { const snap=await getDocs(collection(db,'equipes')); teams=snap.docs.map(d=>({id:d.id,...d.data()})).filter(t=>t.active!==false).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))); teamSelect.innerHTML = teams.length ? '<option value="">Selecione a equipe</option>'+teams.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('') : '<option value="">Nenhuma equipe cadastrada no painel admin</option>'; }
   catch(e){ console.error(e); teamSelect.innerHTML='<option value="">Erro ao carregar equipes</option>'; }
 }
-teamSelect.addEventListener('change',()=>{ const selected=teams.find(t=>t.id===teamSelect.value); const roomInput=document.getElementById('room'); if(selected && selected.room && !roomInput.value.trim()) roomInput.value=selected.room; });
+teamSelect.addEventListener('change',()=>{ const selected=teams.find(t=>t.id===teamSelect.value); const roomInput=document.getElementById('room'); roomInput.value = selected ? (selected.room || '') : ''; });
 
 function getSpeechRecognition(){
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
@@ -107,7 +107,7 @@ document.getElementById('evalForm').addEventListener('submit', async (e)=>{
   if(!valid){ msg.textContent='Confira as linhas em vermelho. Todas precisam de nota e as notas 4 precisam de comentário.'; return; }
   const total=answers.reduce((s,a)=>s+(a.score||0),0);
   const generalComment=document.getElementById('generalComment')?.value.trim() || '';
-  const payload={ type:type.value, typeTitle:rubrics[type.value].title, teamName:selected.name || '', teamId:selected.id, room:document.getElementById('room').value.trim(), judgeUser:user.user, answers, generalComment, total, awardTotal:total, createdAt:serverTimestamp(), createdAtLocal:new Date().toLocaleString('pt-BR') };
-  try { if(!db) throw new Error('Firebase não inicializado'); await addDoc(collection(db,'avaliacoes'), payload); msg.textContent='Avaliação enviada com sucesso!'; e.target.reset(); renderRubric(); loadTeams(); window.scrollTo(0,0); }
+  const payload={ type:type.value, typeTitle:rubrics[type.value].title, teamName:selected.name || '', teamId:selected.id, room:selected.room || '', judgeUser:user.user, answers, generalComment, total, awardTotal:total, createdAt:serverTimestamp(), createdAtLocal:new Date().toLocaleString('pt-BR') };
+  try { if(!db) throw new Error('Firebase não inicializado'); await addDoc(collection(db,'avaliacoes'), payload); msg.textContent='Avaliação enviada com sucesso!'; e.target.reset(); document.getElementById('room').value=''; renderRubric(); loadTeams(); window.scrollTo(0,0); }
   catch(err){ console.error(err); msg.textContent='Erro ao salvar. Confira as regras do Firestore e a conexão com o Firebase.'; }
 });
