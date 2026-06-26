@@ -34,6 +34,55 @@ function removeRepeatedWords(text){
   return text.replace(/\b([\p{L}]+)(\s+\1\b)+/giu, '$1');
 }
 
+function normalizeSpeechChunk(text){
+  return String(text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function wordOverlapSuffixPrefix(existing, incoming){
+  const a = normalizeSpeechChunk(existing).split(' ').filter(Boolean);
+  const b = normalizeSpeechChunk(incoming).split(' ').filter(Boolean);
+  const max = Math.min(a.length, b.length, 18);
+  for(let n = max; n >= 1; n--){
+    if(a.slice(-n).join(' ') === b.slice(0, n).join(' ')) return n;
+  }
+  return 0;
+}
+
+function appendWithoutDuplication(current, incoming){
+  const cleanIncoming = String(incoming || '').replace(/\s+/g, ' ').trim();
+  if(!cleanIncoming) return current || '';
+  const cleanCurrent = String(current || '').replace(/\s+/g, ' ').trim();
+  if(!cleanCurrent) return cleanIncoming;
+
+  const normCurrent = normalizeSpeechChunk(cleanCurrent);
+  const normIncoming = normalizeSpeechChunk(cleanIncoming);
+  if(!normIncoming) return cleanCurrent;
+
+  // Android/Chrome às vezes devolve o mesmo trecho completo repetido ou uma versão maior do trecho anterior.
+  if(normCurrent === normIncoming || normCurrent.endsWith(normIncoming)) return cleanCurrent;
+  if(normIncoming.startsWith(normCurrent)){
+    return cleanIncoming;
+  }
+
+  const overlap = wordOverlapSuffixPrefix(cleanCurrent, cleanIncoming);
+  if(overlap > 0){
+    const incomingWords = cleanIncoming.split(/\s+/);
+    return (cleanCurrent + ' ' + incomingWords.slice(overlap).join(' ')).replace(/\s+/g, ' ').trim();
+  }
+
+  // Evita repetir frases curtas finalizadas várias vezes pelo reconhecimento do Android.
+  const recentCurrent = normCurrent.split(' ').slice(-14).join(' ');
+  if(recentCurrent.includes(normIncoming)) return cleanCurrent;
+
+  return (cleanCurrent + ' ' + cleanIncoming).replace(/\s+/g, ' ').trim();
+}
+
 function refineTranscript(text){
   if(!text) return '';
   let refined = String(text)
@@ -87,19 +136,25 @@ function createSpeechSession(textarea, statusEl, startBtn, pauseBtn, finishBtn){
   const SpeechRecognition = getSpeechRecognition();
   if(!SpeechRecognition || !textarea) return null;
 
+  const isAndroid = /Android/i.test(navigator.userAgent || '');
   const session = {
     recognition: null,
     baseText: textarea.value.trim(),
     finalText: '',
+    liveInterim: '',
     running: false,
     paused: false,
     manualStop: false,
+    isAndroid,
     restartTimer: null,
+    lastFinalNorm: '',
+    lastFinalAt: 0,
     start(){
       if(session.running) return;
       session.manualStop = false;
       session.paused = false;
-      session.baseText = refineTranscript(textarea.value.trim()).replace(/[.]$/, '');
+      session.liveInterim = '';
+      session.baseText = refineTranscript(textarea.value.trim()).replace(/[.!?]$/, '');
       const recognition = new SpeechRecognition();
       session.recognition = recognition;
       recognition.lang = 'pt-BR';
@@ -113,21 +168,38 @@ function createSpeechSession(textarea, statusEl, startBtn, pauseBtn, finishBtn){
         pauseBtn.disabled = false;
         finishBtn.disabled = false;
         startBtn.classList.add('recording');
-        statusEl.textContent = '🎙️ Gravando... fale em frases curtas e naturais.';
+        statusEl.textContent = session.isAndroid
+          ? '🎙️ Gravando no Android... fale pausadamente, em frases curtas.'
+          : '🎙️ Gravando... fale em frases curtas e naturais.';
       };
 
       recognition.onresult = (event)=>{
         let interim = '';
         for(let i = event.resultIndex; i < event.results.length; i++){
-          const transcript = event.results[i][0].transcript;
-          if(event.results[i].isFinal){
-            session.finalText += transcript + ' ';
+          const result = event.results[i];
+          const transcript = (result[0]?.transcript || '').replace(/\s+/g, ' ').trim();
+          if(!transcript) continue;
+
+          if(result.isFinal){
+            const norm = normalizeSpeechChunk(transcript);
+            const now = Date.now();
+            const veryRecentDuplicate = norm && norm === session.lastFinalNorm && (now - session.lastFinalAt) < 2500;
+            if(!veryRecentDuplicate){
+              session.finalText = appendWithoutDuplication(session.finalText, transcript);
+              session.lastFinalNorm = norm;
+              session.lastFinalAt = now;
+            }
+            session.liveInterim = '';
           } else {
-            interim += transcript + ' ';
+            // No Android, o resultado provisório costuma duplicar muito. Mantemos apenas para visualização.
+            interim = transcript;
           }
         }
-        const combined = [session.baseText, session.finalText.trim(), interim.trim()].filter(Boolean).join(' ');
-        textarea.value = combined.replace(/\s+/g, ' ').trim();
+
+        session.liveInterim = interim;
+        const stableText = appendWithoutDuplication(session.baseText, session.finalText);
+        const preview = session.isAndroid ? '' : session.liveInterim;
+        textarea.value = [stableText, preview].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
       };
 
       recognition.onerror = (event)=>{
@@ -148,19 +220,24 @@ function createSpeechSession(textarea, statusEl, startBtn, pauseBtn, finishBtn){
         pauseBtn.disabled = true;
         if(!session.manualStop && !session.paused){
           statusEl.textContent = 'Retomando gravação automaticamente...';
-          session.restartTimer = setTimeout(()=>session.start(), 350);
+          clearTimeout(session.restartTimer);
+          session.restartTimer = setTimeout(()=>session.start(), session.isAndroid ? 800 : 350);
         } else if(session.paused){
           statusEl.textContent = 'Gravação pausada. Clique em continuar para falar mais.';
           startBtn.textContent = '▶️ Continuar';
         }
       };
-      recognition.start();
+      try { recognition.start(); } catch(e) { console.warn(e); }
     },
     pause(){
       if(!session.recognition) return;
       session.paused = true;
       session.manualStop = true;
+      clearTimeout(session.restartTimer);
       try{ session.recognition.stop(); }catch(e){}
+      textarea.value = refineTranscript(appendWithoutDuplication(session.baseText, session.finalText || textarea.value));
+      session.baseText = textarea.value.replace(/[.!?]$/, '');
+      session.finalText = '';
       statusEl.textContent = 'Gravação pausada. Clique em continuar para falar mais.';
       startBtn.textContent = '▶️ Continuar';
     },
@@ -169,15 +246,17 @@ function createSpeechSession(textarea, statusEl, startBtn, pauseBtn, finishBtn){
       session.paused = false;
       clearTimeout(session.restartTimer);
       try{ session.recognition?.stop(); }catch(e){}
-      textarea.value = refineTranscript(textarea.value);
-      session.baseText = textarea.value.replace(/[.]$/, '');
+      const stableText = appendWithoutDuplication(session.baseText, session.finalText || textarea.value);
+      textarea.value = refineTranscript(stableText);
+      session.baseText = textarea.value.replace(/[.!?]$/, '');
       session.finalText = '';
+      session.liveInterim = '';
       startBtn.textContent = '🎙️ Iniciar fala';
       startBtn.disabled = false;
       pauseBtn.disabled = true;
       finishBtn.disabled = true;
       startBtn.classList.remove('recording');
-      statusEl.textContent = 'Comentário refinado. Você ainda pode editar o texto manualmente.';
+      statusEl.textContent = 'Comentário finalizado. Você ainda pode editar o texto manualmente.';
     }
   };
   return session;
@@ -211,7 +290,7 @@ function renderRubric(){
   let html=`<section class="panel ${r.color}"><div class="rubric-head"><div><h2>${esc(r.title)}</h2><p>Marque uma opção de <b>1 a 4</b> em cada linha: Fase Inicial, Em Desenvolvimento, Finalizado ou Excedente. As linhas com <b>⚙️</b> são Core Values e contam com o mesmo peso dos Critérios Técnicos.</p></div></div></section>`;
   let idx=0;
   r.items.forEach(item=>{ html += `<section class="panel rubric"><h3>${esc(item.section)}</h3><p>${esc(item.description)}</p>`; item.rows.forEach(rowObj=>{ idx++; const texts=Array.isArray(rowObj)?rowObj:rowObj.texts; const special=!!rowObj.special; html += `<div class="row" data-row="${idx}" data-section="${esc(item.section)}" data-special="${special}"><div class="row-title">${special?'<span class="gear">⚙️ Core Values</span>':'<span>Critério Técnico</span>'}</div><div class="criteria">`; texts.forEach((text,i)=>{ const score=i+1; const level=['Fase Inicial','Em Desenvolvimento','Finalizado','Excedente'][i]; html += `<label><input type="radio" name="score_${idx}" value="${score}" required><b>${score}</b> ${level}<small>${esc(text)}</small></label>`; }); html += `</div><textarea name="comment_${idx}" placeholder="Comentário da linha. Obrigatório se marcar 4 - Excedente."></textarea></div>`; }); html += '</section>'; });
-  html += `<section class="panel"><h3>Comentário geral da avaliação</h3><p class="hint">Escreva um resumo final da avaliação. Você também pode usar o microfone para transcrever a fala com mais fluidez e refinamento automático.</p><textarea id="generalComment" name="generalComment" class="general-comment" placeholder="Comentário geral sobre a equipe nesta avaliação..."></textarea><div class="mic-actions"><button id="generalCommentMicStart" type="button" class="secondary mic-btn">🎙️ Iniciar fala</button><button id="generalCommentMicPause" type="button" class="secondary" disabled>⏸️ Pausar</button><button id="generalCommentMicFinish" type="button" class="secondary" disabled>■ Finalizar e refinar</button><small id="generalCommentMicStatus" class="muted">Use frases curtas. Ao finalizar, o texto será pontuado e corrigido com termos da FLL.</small></div></section>`;
+  html += `<section class="panel"><h3>Comentário geral da avaliação</h3><p class="hint">Escreva um resumo final da avaliação. Você também pode usar o microfone para transcrever a fala com mais fluidez, evitando repetições no Android.</p><textarea id="generalComment" name="generalComment" class="general-comment" placeholder="Comentário geral sobre a equipe nesta avaliação..."></textarea><div class="mic-actions"><button id="generalCommentMicStart" type="button" class="secondary mic-btn">🎙️ Iniciar fala</button><button id="generalCommentMicPause" type="button" class="secondary" disabled>⏸️ Pausar</button><button id="generalCommentMicFinish" type="button" class="secondary" disabled>■ Finalizar</button><small id="generalCommentMicStatus" class="muted">Use frases curtas. Ao finalizar, o texto será organizado e corrigido com termos da FLL.</small></div></section>`;
   rubricEl.innerHTML=html;
   setupSpeechButtons();
 }
