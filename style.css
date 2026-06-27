@@ -123,3 +123,13 @@ h1,h2,h3{position:relative;z-index:1;text-transform:uppercase}h1{font-size:clamp
 .mic-btn:disabled{opacity:.65;cursor:not-allowed;filter:grayscale(.3)}
 #teamsTable .small-btn,#judgesTable .small-btn{white-space:nowrap}
 @media(max-width:760px){.mic-actions{align-items:flex-start}.mic-actions small{display:block;width:100%}}
+
+
+.ai-correct-box{margin-top:10px;position:relative;z-index:1}
+.ai-correct-btn{padding:10px 14px;font-size:12px;box-shadow:none;border:1px solid rgba(255,255,255,.28)}
+.ai-preview{margin-top:10px;border:1px solid rgba(157,255,189,.35);border-radius:16px;background:rgba(54,214,111,.10);padding:12px;color:#fff}
+.ai-preview.hidden{display:none}
+.ai-preview-text{margin-top:6px;white-space:pre-wrap;line-height:1.45;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px;color:#f7ffe9}
+.ai-preview-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.ai-use-btn:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.4)}
+@media(max-width:760px){.ai-preview-actions .small-btn,.ai-correct-btn{width:100%;justify-content:center}}

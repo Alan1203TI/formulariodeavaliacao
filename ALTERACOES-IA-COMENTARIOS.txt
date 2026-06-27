@@ -1,0 +1,8 @@
+Alterações realizadas - IA nos comentários
+
+- Adicionado botão "✨ Corrigir texto com IA" nos comentários de cada linha da rubrica.
+- Adicionado o mesmo botão no comentário geral da avaliação.
+- Ao clicar, o sistema mostra uma sugestão de texto corrigido antes de alterar o comentário.
+- O avaliador pode escolher entre "Usar texto corrigido" ou "Manter original".
+- A correção funciona no navegador, sem depender de chave de API externa.
+- A rotina melhora pontuação, repetições, maiúsculas/minúsculas, acentos comuns e termos da FLL como Core Values, Projeto de Inovação, Design do Robô, LEGO, FIRST e SPIKE.
