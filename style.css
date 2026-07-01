@@ -147,6 +147,3 @@ h1,h2,h3{position:relative;z-index:1;text-transform:uppercase}h1{font-size:clamp
 .rubric-editor textarea{min-height:70px}
 .rubric-editor-card .actions{margin-top:14px}
 @media(max-width:760px){.rubric-editor-row-head{align-items:flex-start}.rubric-editor-card{padding:14px}}
-.rubric-edit-inside{margin-top:18px;border:1px solid rgba(255,255,255,.16);border-radius:18px;background:rgba(255,255,255,.05);padding:14px}
-.rubric-edit-inside>summary{cursor:pointer;font-weight:1000;text-transform:uppercase;color:var(--yellow)}
-.modal-card .rubric-editor{margin-top:12px}
