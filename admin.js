@@ -1,4 +1,4 @@
-import { collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { collection, getDocs, getDoc, addDoc, deleteDoc, doc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { db } from './firebase-config.js';
 import { rubrics } from './data.js';
 
@@ -9,6 +9,7 @@ document.getElementById('logout').addEventListener('click', () => { sessionStora
 let rows = [];
 let judges = [];
 let teams = [];
+let activeRubrics = JSON.parse(JSON.stringify(rubrics));
 
 function esc(v){ return String(v ?? '').replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m])); }
 function dateValue(r){ if (r.createdAt?.toDate) return r.createdAt.toDate().getTime(); if (r.createdAtLocal) return Date.parse(String(r.createdAtLocal).replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3')) || 0; return 0; }
@@ -17,7 +18,7 @@ function calcTotal(r){ const answers = getAnswers(r); if (!answers.length && r.t
 function calcAwardTotal(r){ return calcTotal(r); }
 function teamNameOf(r){ return r.teamName || r.team || r.equipe || ''; }
 function questionScores(r){ const answers = getAnswers(r); if(!answers.length) return '<span class="muted">Sem respostas detalhadas</span>'; return `<div class="score-list">${answers.map(a=>`<span class="score-pill ${a.special?'special':''}" title="${esc(a.section || '')}">Q${esc(a.row || '')}: <b>${esc(a.score ?? '-')}</b>${a.special?' ⚙️':''}</span>`).join('')}</div>`; }
-function rubricText(r,a){ const rubric = rubrics[r.type]; if(!rubric) return ''; let n=0; for(const item of rubric.items){ for(const row of item.rows){ n++; if(n===Number(a.row)){ const idx=Math.max(0,Math.min(3,Number(a.score||1)-1)); const texts=Array.isArray(row)?row:row.texts; return texts[idx]||''; } } } return ''; }
+function rubricText(r,a){ const rubric = activeRubrics[r.type] || rubrics[r.type]; if(!rubric) return ''; let n=0; for(const item of rubric.items){ for(const row of item.rows){ n++; if(n===Number(a.row)){ const idx=Math.max(0,Math.min(3,Number(a.score||1)-1)); const texts=Array.isArray(row)?row:row.texts; return texts[idx]||''; } } } return ''; }
 
 function renderRanking(){
   const tb = document.querySelector('#rankingTable tbody');
@@ -103,6 +104,104 @@ async function deleteJudge(id, userName){
 }
 window.deleteJudge = deleteJudge;
 
+
+async function loadRubrics(){
+  activeRubrics = JSON.parse(JSON.stringify(rubrics));
+  if(!db) return;
+  try{
+    for(const key of Object.keys(activeRubrics)){
+      const snap = await getDoc(doc(db, 'rubricas', key));
+      if(snap.exists()){
+        const data = snap.data();
+        if(data && Array.isArray(data.items)) activeRubrics[key] = { ...activeRubrics[key], ...data, items:data.items };
+      }
+    }
+  }catch(e){ console.warn('Não foi possível carregar rubricas personalizadas.', e); }
+}
+
+function renderRubricEditor(){
+  const holder = document.getElementById('rubricEditor');
+  if(!holder) return;
+  holder.innerHTML = Object.entries(activeRubrics).map(([key, r])=>{
+    let rowCount = 0;
+    const itemsHtml = (r.items || []).map((item, itemIndex)=>{
+      const rowsHtml = (item.rows || []).map((row, rowIndex)=>{
+        rowCount++;
+        const texts = Array.isArray(row) ? row : (row.texts || []);
+        return `<div class="rubric-editor-row">
+          <div class="rubric-editor-row-head"><b>Linha ${rowCount}</b><label class="inline-check"><input type="checkbox" data-rubric-key="${key}" data-item-index="${itemIndex}" data-row-index="${rowIndex}" data-field="special" ${row.special ? 'checked' : ''}> Core Values ⚙️</label></div>
+          ${[0,1,2,3].map(i=>`<label>${['Fase Inicial','Em Desenvolvimento','Finalizado','Excedente'][i]}<textarea data-rubric-key="${key}" data-item-index="${itemIndex}" data-row-index="${rowIndex}" data-text-index="${i}" placeholder="Texto da nota ${i+1}">${esc(texts[i] || '')}</textarea></label>`).join('')}
+        </div>`;
+      }).join('');
+      return `<details class="rubric-editor-item" open><summary>${esc(item.section || 'Seção')}</summary>
+        <label>Nome da seção<input data-rubric-key="${key}" data-item-index="${itemIndex}" data-field="section" value="${esc(item.section || '')}"></label>
+        <label>Descrição da seção<textarea data-rubric-key="${key}" data-item-index="${itemIndex}" data-field="description">${esc(item.description || '')}</textarea></label>
+        ${rowsHtml}
+      </details>`;
+    }).join('');
+    return `<div class="rubric-editor-card" data-rubric-card="${key}"><h3>${esc(r.title)}</h3>
+      <label>Título da rubrica<input data-rubric-key="${key}" data-field="title" value="${esc(r.title || '')}"></label>
+      ${itemsHtml}
+      <div class="actions"><button type="button" class="small-btn" onclick="saveRubric('${key}')">Salvar ${esc(r.title)}</button><button type="button" class="small-btn ghost" onclick="resetRubric('${key}')">Voltar padrão</button></div>
+      <p id="rubricMsg_${key}" class="msg"></p>
+    </div>`;
+  }).join('');
+}
+
+function collectRubricFromEditor(key){
+  const base = JSON.parse(JSON.stringify(activeRubrics[key] || rubrics[key]));
+  const card = document.querySelector(`[data-rubric-card="${key}"]`);
+  if(!card) return base;
+  const titleInput = card.querySelector(`[data-rubric-key="${key}"][data-field="title"]`);
+  base.title = titleInput?.value.trim() || base.title;
+  (base.items || []).forEach((item, itemIndex)=>{
+    const sectionInput = card.querySelector(`[data-rubric-key="${key}"][data-item-index="${itemIndex}"][data-field="section"]`);
+    const descInput = card.querySelector(`[data-rubric-key="${key}"][data-item-index="${itemIndex}"][data-field="description"]`);
+    item.section = sectionInput?.value.trim() || item.section;
+    item.description = descInput?.value.trim() || '';
+    (item.rows || []).forEach((row, rowIndex)=>{
+      if(Array.isArray(row)) item.rows[rowIndex] = { special:false, texts:row };
+      const obj = item.rows[rowIndex];
+      const specialInput = card.querySelector(`[data-rubric-key="${key}"][data-item-index="${itemIndex}"][data-row-index="${rowIndex}"][data-field="special"]`);
+      obj.special = !!specialInput?.checked;
+      obj.texts = [0,1,2,3].map(i=>{
+        const t = card.querySelector(`[data-rubric-key="${key}"][data-item-index="${itemIndex}"][data-row-index="${rowIndex}"][data-text-index="${i}"]`);
+        return t?.value.trim() || '';
+      });
+    });
+  });
+  return base;
+}
+
+async function saveRubric(key){
+  const msg = document.getElementById(`rubricMsg_${key}`);
+  if(msg) msg.textContent = 'Salvando rubrica...';
+  try{
+    const data = collectRubricFromEditor(key);
+    await setDoc(doc(db, 'rubricas', key), { ...data, updatedAt:serverTimestamp(), updatedAtLocal:new Date().toLocaleString('pt-BR') });
+    activeRubrics[key] = data;
+    if(msg) msg.textContent = 'Rubrica salva com sucesso. As próximas avaliações já usarão esta versão.';
+    render();
+    renderRanking();
+  }catch(e){ console.error(e); if(msg) msg.textContent = 'Erro ao salvar rubrica. Confira as regras do Firestore.'; }
+}
+window.saveRubric = saveRubric;
+
+async function resetRubric(key){
+  if(!confirm('Deseja voltar esta rubrica para o texto padrão do sistema?')) return;
+  const msg = document.getElementById(`rubricMsg_${key}`);
+  try{
+    const data = JSON.parse(JSON.stringify(rubrics[key]));
+    await setDoc(doc(db, 'rubricas', key), { ...data, updatedAt:serverTimestamp(), updatedAtLocal:new Date().toLocaleString('pt-BR') });
+    activeRubrics[key] = data;
+    renderRubricEditor();
+    if(msg) msg.textContent = 'Rubrica restaurada para o padrão.';
+    render();
+    renderRanking();
+  }catch(e){ console.error(e); if(msg) msg.textContent = 'Erro ao restaurar rubrica.'; }
+}
+window.resetRubric = resetRubric;
+
 async function load(){
   const status = document.getElementById('status');
   if(!db){ status.textContent='Firebase não inicializado.'; return; }
@@ -167,4 +266,4 @@ document.getElementById('judgeForm').addEventListener('submit', createJudge);
 document.getElementById('teamForm').addEventListener('submit', createTeam);
 document.getElementById('closeModal').addEventListener('click', () => document.getElementById('detailModal').classList.add('hidden'));
 document.getElementById('detailModal').addEventListener('click', e=>{ if(e.target.id==='detailModal') e.currentTarget.classList.add('hidden'); });
-load(); loadJudges(); loadTeams();
+await loadRubrics(); renderRubricEditor(); load(); loadJudges(); loadTeams();

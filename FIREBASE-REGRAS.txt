@@ -23,6 +23,11 @@ service cloud.firestore {
       allow write: if true;
     }
 
+    match /rubricas/{doc} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     match /salas/{doc} {
       allow read: if true;
       allow write: if true;
@@ -32,5 +37,5 @@ service cloud.firestore {
 
 IMPORTANTE:
 - Esta regra não possui data de expiração.
-- As coleções usadas pelo código são: usuarios, avaliacoes, equipes e salas.
+- As coleções usadas pelo código são: usuarios, avaliacoes, equipes, rubricas e salas.
 - Não publique este arquivo no lugar do index.html no GitHub Pages.

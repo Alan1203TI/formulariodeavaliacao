@@ -1,0 +1,9 @@
+ALTERAÇÕES - RUBRICAS EDITÁVEIS NO ADMIN
+
+- Adicionada seção "Editar rubricas das avaliações" no painel Admin.
+- O Admin pode editar o título da rubrica, nome/descrição das seções, textos das notas 1 a 4 e marcar/desmarcar linhas como Core Values.
+- As rubricas editadas são salvas no Firestore na coleção rubricas, uma por tipo: inovacao e robo.
+- A página de avaliação carrega automaticamente as rubricas personalizadas antes de montar o formulário.
+- A visualização de detalhes e o PDF no Admin passam a usar os textos personalizados salvos.
+- Incluída opção "Voltar padrão" para restaurar a rubrica original do sistema.
+- Atualizado FIREBASE-REGRAS.txt para incluir a coleção rubricas.

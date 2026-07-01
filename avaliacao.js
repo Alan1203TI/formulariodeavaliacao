@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { collection, addDoc, getDocs, getDoc, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { db } from './firebase-config.js';
 import { rubrics } from './data.js';
 
@@ -9,6 +9,7 @@ function sair(){ sessionStorage.removeItem('fllUser'); localStorage.removeItem('
 document.getElementById('logout').addEventListener('click', sair);
 
 const type = document.getElementById('type');
+let activeRubrics = JSON.parse(JSON.stringify(rubrics));
 const rubricEl = document.getElementById('rubric');
 const teamSelect = document.getElementById('teamSelect');
 let teams = [];
@@ -420,7 +421,7 @@ function setupSpeechButtons(){
 }
 
 function renderRubric(){
-  const r=rubrics[type.value]; if(!r){ rubricEl.innerHTML='<section class="panel"><p class="msg">Rubrica não encontrada.</p></section>'; return; }
+  const r=activeRubrics[type.value]; if(!r){ rubricEl.innerHTML='<section class="panel"><p class="msg">Rubrica não encontrada.</p></section>'; return; }
   let html=`<section class="panel ${r.color}"><div class="rubric-head"><div><h2>${esc(r.title)}</h2><p>Marque uma opção de <b>1 a 4</b> em cada linha: Fase Inicial, Em Desenvolvimento, Finalizado ou Excedente. As linhas com <b>⚙️</b> são Core Values e contam com o mesmo peso dos Critérios Técnicos.</p></div></div></section>`;
   let idx=0;
   r.items.forEach(item=>{ html += `<section class="panel rubric"><h3>${esc(item.section)}</h3><p>${esc(item.description)}</p>`; item.rows.forEach(rowObj=>{ idx++; const texts=Array.isArray(rowObj)?rowObj:rowObj.texts; const special=!!rowObj.special; html += `<div class="row" data-row="${idx}" data-section="${esc(item.section)}" data-special="${special}"><div class="row-title">${special?'<span class="gear">⚙️ Core Values</span>':'<span>Critério Técnico</span>'}</div><div class="criteria">`; texts.forEach((text,i)=>{ const score=i+1; const level=['Fase Inicial','Em Desenvolvimento','Finalizado','Excedente'][i]; html += `<label><input type="radio" name="score_${idx}" value="${score}" required><b>${score}</b> ${level}<small>${esc(text)}</small></label>`; }); html += `</div><textarea name="comment_${idx}" placeholder="Comentário da linha. Obrigatório se marcar 4 - Excedente."></textarea></div>`; }); html += '</section>'; });
@@ -431,7 +432,26 @@ function renderRubric(){
 }
 
 
-type.addEventListener('change', renderRubric); renderRubric(); loadTeams();
+async function loadRubrics(){
+  activeRubrics = JSON.parse(JSON.stringify(rubrics));
+  if(!db) return;
+  try{
+    for(const key of Object.keys(activeRubrics)){
+      const snap = await getDoc(doc(db, 'rubricas', key));
+      if(snap.exists()){
+        const data = snap.data();
+        if(data && Array.isArray(data.items)){
+          activeRubrics[key] = { ...activeRubrics[key], ...data, items:data.items };
+        }
+      }
+    }
+  }catch(e){ console.warn('Não foi possível carregar rubricas personalizadas.', e); }
+}
+
+type.addEventListener('change', renderRubric);
+await loadRubrics();
+renderRubric();
+loadTeams();
 
 
 document.getElementById('evalForm').addEventListener('submit', async (e)=>{
@@ -442,7 +462,7 @@ document.getElementById('evalForm').addEventListener('submit', async (e)=>{
   if(!valid){ msg.textContent='Confira as linhas em vermelho. Todas precisam de nota e as notas 4 precisam de comentário.'; return; }
   const total=answers.reduce((s,a)=>s+(a.score||0),0);
   const generalComment=improveCommentText(document.getElementById('generalComment')?.value.trim() || '');
-  const payload={ type:type.value, typeTitle:rubrics[type.value].title, teamName:selected.name || '', teamId:selected.id, room:selected.room || '', judgeUser:user.user, answers, generalComment, total, awardTotal:total, createdAt:serverTimestamp(), createdAtLocal:new Date().toLocaleString('pt-BR') };
+  const payload={ type:type.value, typeTitle:activeRubrics[type.value].title, teamName:selected.name || '', teamId:selected.id, room:selected.room || '', judgeUser:user.user, answers, generalComment, total, awardTotal:total, createdAt:serverTimestamp(), createdAtLocal:new Date().toLocaleString('pt-BR') };
   try { if(!db) throw new Error('Firebase não inicializado'); await addDoc(collection(db,'avaliacoes'), payload); msg.textContent='Avaliação enviada com sucesso!'; e.target.reset(); document.getElementById('room').value=''; renderRubric(); loadTeams(); window.scrollTo(0,0); }
   catch(err){ console.error(err); msg.textContent='Erro ao salvar. Confira as regras do Firestore e a conexão com o Firebase.'; }
 });
