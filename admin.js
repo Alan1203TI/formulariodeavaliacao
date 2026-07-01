@@ -47,7 +47,14 @@ function openDetails(index){
     <p>Sala: <b>${esc(r.room)}</b> | Data: ${esc(r.createdAtLocal)}</p>
     <div class="calc-box"><b>Total:</b> ${total}<small>Critério Técnico e Core Values contam com o mesmo peso.</small></div>
     ${r.generalComment ? `<div class="detail-item"><b>Comentário geral:</b><p>${esc(r.generalComment)}</p></div>` : ''}
-    <div class="detail-list">${answers.map(a=>`<div class="detail-item ${a.special?'special':''}"><div><b>Q${esc(a.row)}</b> — ${esc(a.section)} ${a.special?'<span class="gear">⚙️ Core Values</span>':'<span class="muted">Critério Técnico</span>'}</div><div>Nota: <b>${esc(a.score)}</b></div><small>${esc(rubricText(r,a))}</small>${a.comment?`<p><b>Comentário:</b> ${esc(a.comment)}</p>`:''}</div>`).join('')}</div>`;
+    <div class="detail-list">${answers.map(a=>`<div class="detail-item ${a.special?'special':''}"><div><b>Q${esc(a.row)}</b> — ${esc(a.section)} ${a.special?'<span class="gear">⚙️ Core Values</span>':'<span class="muted">Critério Técnico</span>'}</div><div>Nota: <b>${esc(a.score)}</b></div><small>${esc(rubricText(r,a))}</small>${a.comment?`<p><b>Comentário:</b> ${esc(a.comment)}</p>`:''}</div>`).join('')}</div>
+    <details class="rubric-edit-inside">
+      <summary>Editar comentário geral</summary>
+      <p class="hint">Esta edição altera somente o comentário geral desta avaliação. As questões, notas e textos da rubrica permanecem iguais.</p>
+      <label>Comentário geral<textarea id="editGeneralComment_${esc(r.id)}" class="general-comment">${esc(r.generalComment || '')}</textarea></label>
+      <div class="actions"><button type="button" class="small-btn" onclick="saveGeneralComment('${esc(r.id)}')">Salvar comentário</button></div>
+      <p id="generalCommentMsg_${esc(r.id)}" class="msg"></p>
+    </details>`;
   document.getElementById('detailModal').classList.remove('hidden');
 }
 
@@ -87,6 +94,29 @@ window.downloadEvaluationPdf = downloadEvaluationPdf;
 
 window.openDetails = openDetails;
 
+async function saveGeneralComment(id){
+  if(!id) return;
+  const textarea = document.getElementById(`editGeneralComment_${id}`);
+  const msg = document.getElementById(`generalCommentMsg_${id}`);
+  const value = textarea ? textarea.value.trim() : '';
+  if(msg) msg.textContent = 'Salvando comentário...';
+  try{
+    await setDoc(doc(db, 'avaliacoes', id), {
+      generalComment: value,
+      updatedAt: serverTimestamp(),
+      updatedAtLocal: new Date().toLocaleString('pt-BR')
+    }, { merge: true });
+    const item = rows.find(r => r.id === id);
+    if(item){ item.generalComment = value; item.updatedAtLocal = new Date().toLocaleString('pt-BR'); }
+    if(msg) msg.textContent = 'Comentário geral salvo com sucesso.';
+    render();
+  }catch(e){
+    console.error(e);
+    if(msg) msg.textContent = 'Erro ao salvar comentário. Confira as regras do Firestore.';
+  }
+}
+window.saveGeneralComment = saveGeneralComment;
+
 async function deleteEvaluation(id){
   if(!id) return;
   if(!confirm('Deseja apagar esta avaliação enviada? Esta ação não pode ser desfeita.')) return;
@@ -106,46 +136,42 @@ window.deleteJudge = deleteJudge;
 
 
 async function loadRubrics(){
+  // As questões e critérios da rubrica ficam fixos no sistema.
+  // No Admin, a edição permitida dentro de "Ver rubrica" altera apenas o comentário geral da avaliação.
   activeRubrics = JSON.parse(JSON.stringify(rubrics));
-  if(!db) return;
-  try{
-    for(const key of Object.keys(activeRubrics)){
-      const snap = await getDoc(doc(db, 'rubricas', key));
-      if(snap.exists()){
-        const data = snap.data();
-        if(data && Array.isArray(data.items)) activeRubrics[key] = { ...activeRubrics[key], ...data, items:data.items };
-      }
-    }
-  }catch(e){ console.warn('Não foi possível carregar rubricas personalizadas.', e); }
+}
+
+function rubricEditorCardHtml(key){
+  const r = activeRubrics[key] || rubrics[key];
+  if(!r) return '<p class="msg">Rubrica não encontrada.</p>';
+  let rowCount = 0;
+  const itemsHtml = (r.items || []).map((item, itemIndex)=>{
+    const rowsHtml = (item.rows || []).map((row, rowIndex)=>{
+      rowCount++;
+      const texts = Array.isArray(row) ? row : (row.texts || []);
+      return `<div class="rubric-editor-row">
+        <div class="rubric-editor-row-head"><b>Linha ${rowCount}</b><label class="inline-check"><input type="checkbox" data-rubric-key="${key}" data-item-index="${itemIndex}" data-row-index="${rowIndex}" data-field="special" ${row.special ? 'checked' : ''}> Core Values ⚙️</label></div>
+        ${[0,1,2,3].map(i=>`<label>${['Fase Inicial','Em Desenvolvimento','Finalizado','Excedente'][i]}<textarea data-rubric-key="${key}" data-item-index="${itemIndex}" data-row-index="${rowIndex}" data-text-index="${i}" placeholder="Texto da nota ${i+1}">${esc(texts[i] || '')}</textarea></label>`).join('')}
+      </div>`;
+    }).join('');
+    return `<details class="rubric-editor-item" open><summary>${esc(item.section || 'Seção')}</summary>
+      <label>Nome da seção<input data-rubric-key="${key}" data-item-index="${itemIndex}" data-field="section" value="${esc(item.section || '')}"></label>
+      <label>Descrição da seção<textarea data-rubric-key="${key}" data-item-index="${itemIndex}" data-field="description">${esc(item.description || '')}</textarea></label>
+      ${rowsHtml}
+    </details>`;
+  }).join('');
+  return `<div class="rubric-editor-card" data-rubric-card="${key}"><h3>${esc(r.title)}</h3>
+    <label>Título da rubrica<input data-rubric-key="${key}" data-field="title" value="${esc(r.title || '')}"></label>
+    ${itemsHtml}
+    <div class="actions"><button type="button" class="small-btn" onclick="saveRubric('${key}')">Salvar alterações</button><button type="button" class="small-btn ghost" onclick="resetRubric('${key}')">Voltar padrão</button></div>
+    <p id="rubricMsg_${key}" class="msg"></p>
+  </div>`;
 }
 
 function renderRubricEditor(){
   const holder = document.getElementById('rubricEditor');
   if(!holder) return;
-  holder.innerHTML = Object.entries(activeRubrics).map(([key, r])=>{
-    let rowCount = 0;
-    const itemsHtml = (r.items || []).map((item, itemIndex)=>{
-      const rowsHtml = (item.rows || []).map((row, rowIndex)=>{
-        rowCount++;
-        const texts = Array.isArray(row) ? row : (row.texts || []);
-        return `<div class="rubric-editor-row">
-          <div class="rubric-editor-row-head"><b>Linha ${rowCount}</b><label class="inline-check"><input type="checkbox" data-rubric-key="${key}" data-item-index="${itemIndex}" data-row-index="${rowIndex}" data-field="special" ${row.special ? 'checked' : ''}> Core Values ⚙️</label></div>
-          ${[0,1,2,3].map(i=>`<label>${['Fase Inicial','Em Desenvolvimento','Finalizado','Excedente'][i]}<textarea data-rubric-key="${key}" data-item-index="${itemIndex}" data-row-index="${rowIndex}" data-text-index="${i}" placeholder="Texto da nota ${i+1}">${esc(texts[i] || '')}</textarea></label>`).join('')}
-        </div>`;
-      }).join('');
-      return `<details class="rubric-editor-item" open><summary>${esc(item.section || 'Seção')}</summary>
-        <label>Nome da seção<input data-rubric-key="${key}" data-item-index="${itemIndex}" data-field="section" value="${esc(item.section || '')}"></label>
-        <label>Descrição da seção<textarea data-rubric-key="${key}" data-item-index="${itemIndex}" data-field="description">${esc(item.description || '')}</textarea></label>
-        ${rowsHtml}
-      </details>`;
-    }).join('');
-    return `<div class="rubric-editor-card" data-rubric-card="${key}"><h3>${esc(r.title)}</h3>
-      <label>Título da rubrica<input data-rubric-key="${key}" data-field="title" value="${esc(r.title || '')}"></label>
-      ${itemsHtml}
-      <div class="actions"><button type="button" class="small-btn" onclick="saveRubric('${key}')">Salvar ${esc(r.title)}</button><button type="button" class="small-btn ghost" onclick="resetRubric('${key}')">Voltar padrão</button></div>
-      <p id="rubricMsg_${key}" class="msg"></p>
-    </div>`;
-  }).join('');
+  holder.innerHTML = Object.keys(activeRubrics).map(key=>rubricEditorCardHtml(key)).join('');
 }
 
 function collectRubricFromEditor(key){
@@ -266,4 +292,4 @@ document.getElementById('judgeForm').addEventListener('submit', createJudge);
 document.getElementById('teamForm').addEventListener('submit', createTeam);
 document.getElementById('closeModal').addEventListener('click', () => document.getElementById('detailModal').classList.add('hidden'));
 document.getElementById('detailModal').addEventListener('click', e=>{ if(e.target.id==='detailModal') e.currentTarget.classList.add('hidden'); });
-await loadRubrics(); renderRubricEditor(); load(); loadJudges(); loadTeams();
+await loadRubrics(); load(); loadJudges(); loadTeams();

@@ -1,0 +1,6 @@
+ALTERAÇÃO REALIZADA
+
+- Removida a edição das questões/textos da rubrica dentro de "Ver rubrica".
+- Agora, ao clicar em "Ver rubrica", a opção de edição altera somente o Comentário geral da avaliação.
+- As questões, critérios, notas, textos e marcações de Core Values permanecem fixos conforme o modelo padrão do sistema.
+- A tela de avaliação dos jurados também volta a usar sempre a rubrica padrão, sem puxar alterações da coleção rubricas.

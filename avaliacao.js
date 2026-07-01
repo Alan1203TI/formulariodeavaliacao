@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, getDoc, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { collection, addDoc, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { db } from './firebase-config.js';
 import { rubrics } from './data.js';
 
@@ -433,19 +433,9 @@ function renderRubric(){
 
 
 async function loadRubrics(){
+  // Mantém os textos das questões fixos conforme o modelo padrão.
+  // A edição feita no Admin é somente no comentário geral das avaliações já enviadas.
   activeRubrics = JSON.parse(JSON.stringify(rubrics));
-  if(!db) return;
-  try{
-    for(const key of Object.keys(activeRubrics)){
-      const snap = await getDoc(doc(db, 'rubricas', key));
-      if(snap.exists()){
-        const data = snap.data();
-        if(data && Array.isArray(data.items)){
-          activeRubrics[key] = { ...activeRubrics[key], ...data, items:data.items };
-        }
-      }
-    }
-  }catch(e){ console.warn('Não foi possível carregar rubricas personalizadas.', e); }
 }
 
 type.addEventListener('change', renderRubric);

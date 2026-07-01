@@ -7,3 +7,8 @@ ALTERAÇÕES - RUBRICAS EDITÁVEIS NO ADMIN
 - A visualização de detalhes e o PDF no Admin passam a usar os textos personalizados salvos.
 - Incluída opção "Voltar padrão" para restaurar a rubrica original do sistema.
 - Atualizado FIREBASE-REGRAS.txt para incluir a coleção rubricas.
+
+AJUSTE 2026-07-01:
+- Removida a área separada de edição de rubricas do painel admin.
+- A edição agora fica dentro da janela aberta pelo botão "Ver rubrica", em "Editar esta rubrica".
+- O Admin vê a avaliação enviada e, no mesmo local, pode editar o modelo daquela rubrica.
